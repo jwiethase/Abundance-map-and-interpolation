@@ -55,12 +55,11 @@ server <- function(input, output, session) {
   
     data <- reactive({
       req(input$dataset)
-      read.csv(input$dataset$datapath) 
+      read.csv(input$dataset$datapath) %>% mutate(Date = dmy(Date), year = as.numeric(format(Date,'%Y')))
     })
-    
+
     observeEvent(data(), {
-      data <- data()
-      Species.choices <- data %>% select(species) %>% unique() %>% arrange(species)
+      Species.choices <- data() %>% select(species) %>% unique() %>% arrange(species)
       updateSelectInput(session, "species.choices", choices= Species.choices$species)
     })
     
@@ -69,8 +68,6 @@ server <- function(input, output, session) {
     observeEvent(input$species.choices, {
     output$checkbox <- renderUI({
       data <- data()
-      data$Date <- dmy(data$Date)
-      data$year <- as.numeric(format(data$Date,'%Y'))
     Species <- gsub("[[:space:]]\\(.*$", "", input$species.choices)
     choice <-  data.frame(year= unique(data[data$species %in% Species, "year"]))
     choice$year <- choice$year[order(choice$year, decreasing = TRUE)]
@@ -83,8 +80,6 @@ server <- function(input, output, session) {
   # Filter the initial dataframe by species and year chosen
   filteredData <- shiny::reactive({
     data <- data()
-    data$Date <- dmy(data$Date)
-    data$year <- as.numeric(format(data$Date,'%Y'))
     Species <- gsub("[[:space:]]\\(.*$", "", input$species.choices)
     data <- data[data$year %in% input$checkbox, ]
     new_df <- data %>% group_by(species, long, lat, Site) %>% 
@@ -94,8 +89,6 @@ server <- function(input, output, session) {
   # Filter the initial dataframe, but retain all columns. The product will be used for the download button 
   DataDetailed <- shiny::reactive({
     data <- data()
-    data$Date <- dmy(data$Date)
-    data$year <- as.numeric(format(data$Date,'%Y'))
     Species <- gsub("[[:space:]]\\(.*$", "", input$species.choices)
     data <- data[data$year %in% input$checkbox, ]
     new_df <- data %>% dplyr::filter(grepl(Species, species, ignore.case = TRUE) == TRUE)

@@ -83,6 +83,8 @@ server <- function(input, output, session) {
   # Filter the initial dataframe by species and year chosen
   filteredData <- shiny::reactive({
     data <- data()
+    data$Date <- dmy(data$Date)
+    data$year <- as.numeric(format(data$Date,'%Y'))
     Species <- gsub("[[:space:]]\\(.*$", "", input$species.choices)
     data <- data[data$year %in% input$checkbox, ]
     new_df <- data %>% group_by(species, long, lat, Site) %>% 
@@ -92,6 +94,8 @@ server <- function(input, output, session) {
   # Filter the initial dataframe, but retain all columns. The product will be used for the download button 
   DataDetailed <- shiny::reactive({
     data <- data()
+    data$Date <- dmy(data$Date)
+    data$year <- as.numeric(format(data$Date,'%Y'))
     Species <- gsub("[[:space:]]\\(.*$", "", input$species.choices)
     data <- data[data$year %in% input$checkbox, ]
     new_df <- data %>% dplyr::filter(grepl(Species, species, ignore.case = TRUE) == TRUE)

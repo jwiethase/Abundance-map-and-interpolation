@@ -4,21 +4,7 @@ library(leaflet)
 library(dplyr)
 library(mapview)
 library(scales)
-
-# Import the data set
-data <- read.csv('OpWall_banding_data.csv') %>% group_by(common.name) %>% mutate(rarity = length(common.name)) %>% ungroup()
-
-# Make list of unique species in the data set:
-# Use common name and rarity index
-Species <- data %>% dplyr::select(common.name, rarity) %>% unique()
-# Sort alphabetically
-Species <- Species[order(Species$common.name, decreasing = FALSE),]
-# Create list for drop down menu
-Species.choices <- Species %>% mutate(choices=paste(common.name, ' (', rarity, ')', sep='')) %>% 
-  dplyr::select(choices) %>% unique()
-# Add option to use no species at all
-Species.choices <- rbind(Species.choices, 'none')
-
+library (lubridate)
 
 # Make the user interface
 ui <- shiny::bootstrapPage(tags$head(tags$style(HTML("
@@ -33,13 +19,24 @@ ui <- shiny::bootstrapPage(tags$head(tags$style(HTML("
                            # Add a side panel for inputs
                            shiny::absolutePanel(top = 20, right = 20, width = 300,
                                                 draggable = TRUE,
-                                                shiny::wellPanel(
+                                                shiny::wellPanel( shiny::fileInput(inputId = 'dataset', 
+                                                                                   label = h4('Choose .csv file to upload'),
+                                                                                   accept = c('.csv')
+                                                ),
+                                                helpText("Warning: Dataset has to include all of the following column names:"),
+                                                hr(),
+                                                helpText("'Species' (Format: Common OR scientific"),
+                                                helpText("'Site'"),
+                                                helpText("'lat'"),
+                                                helpText("'long'"),
+                                                helpText("'Date' (Format: dmy)"),
+                                                hr(),
                                                   shiny::selectInput(inputId = "maptype", 
                                                                      label = h4("Map type"),
                                                                      choices = c('Esri.WorldImagery', 'Esri.WorldTopoMap', 'OpenMapSurfer.Roads', 'Esri.DeLorme', 'OpenTopoMap')),
                                                   shiny::selectInput(inputId = "species.choices", 
-                                                                     label = h4("Species (rarity)"),
-                                                                     choices = Species.choices), 
+                                                                     label = h4("Species"),
+                                                                     choices = ' '), 
                                                   uiOutput("checkbox"),
                                                   
                                                   hr(),
@@ -55,33 +52,54 @@ ui <- shiny::bootstrapPage(tags$head(tags$style(HTML("
 
 # Make the server functions
 server <- function(input, output, session) {
+  
+    data <- reactive({
+      req(input$dataset)
+      read.csv(input$dataset$datapath) 
+    })
+    
+    observeEvent(data(), {
+      data <- data()
+      Species.choices <- data %>% select(species) %>% unique() %>% arrange(species)
+      updateSelectInput(session, "species.choices", choices= Species.choices$species)
+    })
+    
   # Modify the checkbox options for year dependand on the subsetted dataframe
-  output$checkbox <- renderUI({
+  
+    observeEvent(input$species.choices, {
+    output$checkbox <- renderUI({
+      data <- data()
+      data$Date <- dmy(data$Date)
+      data$year <- as.numeric(format(data$Date,'%Y'))
     Species <- gsub("[[:space:]]\\(.*$", "", input$species.choices)
-    choice <-  as.data.frame(unique(data[data$common.name %in% Species, "year"]))
+    choice <-  data.frame(year= unique(data[data$species %in% Species, "year"]))
     choice$year <- choice$year[order(choice$year, decreasing = TRUE)]
     checkboxGroupInput(inputId = "checkbox",
                        label = h4("Year"),
                        choices = choice$year, selected = choice$year)
   })
+    })
   
   # Filter the initial dataframe by species and year chosen
   filteredData <- shiny::reactive({
+    data <- data()
     Species <- gsub("[[:space:]]\\(.*$", "", input$species.choices)
     data <- data[data$year %in% input$checkbox, ]
-    new_df <- data %>% group_by(Loc, common.name, long, lat, scientific.name, Site) %>% 
-      summarize(abundance= n()) %>% ungroup() %>% dplyr::filter(grepl(Species, common.name, ignore.case = TRUE) == TRUE)
+    new_df <- data %>% group_by(species, long, lat, Site) %>% 
+      summarize(abundance= n()) %>% ungroup() %>% dplyr::filter(grepl(Species, species, ignore.case = TRUE) == TRUE)
   })
   
   # Filter the initial dataframe, but retain all columns. The product will be used for the download button 
   DataDetailed <- shiny::reactive({
+    data <- data()
     Species <- gsub("[[:space:]]\\(.*$", "", input$species.choices)
     data <- data[data$year %in% input$checkbox, ]
-    new_df <- data %>% dplyr::filter(grepl(Species, common.name, ignore.case = TRUE) == TRUE) %>% dplyr::select(-rarity)
+    new_df <- data %>% dplyr::filter(grepl(Species, species, ignore.case = TRUE) == TRUE)
   })
   
   # Make a leaflet map that won't change with the user's input
   output$map <- leaflet::renderLeaflet({
+    data <- data()
     leaflet::leaflet(data) %>%  
       mapview::addLogo('https://i0.wp.com/shop.opwall.com/wp-content/uploads/2015/10/cropped-OpWall_circle_blue.png?ssl=1',
                        src= 'remote', position = 'topleft', alpha=.7,
@@ -92,6 +110,7 @@ server <- function(input, output, session) {
   
   # Update above leaflet map depending on user inputs
   shiny::observe({
+    data <- data()
     sites <- data %>% dplyr::select(long, lat, Site) %>% unique()
     
     map <- leaflet::leafletProxy(map = "map", data = filteredData()) %>%

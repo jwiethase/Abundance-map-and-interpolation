@@ -70,14 +70,16 @@ server <- function(input, output, session) {
       updateSelectInput(session, "species.choices", choices= Species.choices$Species)
     })
     
+    Spec.choice <- reactive({
+      gsub("[[:space:]]\\(.*$", "", input$species.choices)
+    })
     
   # Modify the checkbox options for year dependand on the subsetted dataframe
   
     observeEvent(input$species.choices, {
     output$checkbox <- renderUI({
       data <- data()
-    Species.choice <- gsub("[[:space:]]\\(.*$", "", input$species.choices)
-    choice <-  data.frame(year= unique(data[data$Species %in% Species.choice, "year"]))
+    choice <-  data.frame(year= unique(data[data$Species %in% Spec.choice(), "year"]))
     choice$year <- choice$year[order(choice$year, decreasing = TRUE)]
     checkboxGroupInput(inputId = "checkbox",
                        label = h4("Year"),
@@ -88,18 +90,16 @@ server <- function(input, output, session) {
   # Filter the initial dataframe by species and year chosen
   filteredData <- shiny::reactive({
     data <- data()
-    Species.choice <- gsub("[[:space:]]\\(.*$", "", input$species.choices)
     data <- data[data$year %in% input$checkbox, ]
     new_df <- data %>% group_by(Species, long, lat, Site) %>% 
-      summarize(abundance= n()) %>% ungroup() %>% dplyr::filter(grepl(Species.choice, Species, ignore.case = TRUE) == TRUE)
+      summarize(abundance= n()) %>% ungroup() %>% dplyr::filter(grepl(Spec.choice(), Species, ignore.case = TRUE) == TRUE)
   })
   
   # Filter the initial dataframe, but retain all columns. The product will be used for the download button 
   DataDetailed <- shiny::reactive({
     data <- data()
-    Species.choice <- gsub("[[:space:]]\\(.*$", "", input$species.choices)
     data <- data[data$year %in% input$checkbox, ]
-    new_df <- data %>% dplyr::filter(grepl(Species.choice, Species, ignore.case = TRUE) == TRUE)
+    new_df <- data %>% dplyr::filter(grepl(Spec.choice(), Species, ignore.case = TRUE) == TRUE)
   })
   
   # Make a leaflet map that won't change with the user's input

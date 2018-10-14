@@ -2,9 +2,9 @@ rm(list = ls(all=TRUE))
 library(shiny)
 library(leaflet)
 library(dplyr)
-library(mapview)
 library(scales)
 library (lubridate)
+
 
 # Make the user interface
 ui <- shiny::bootstrapPage(tags$head(tags$style(HTML("
@@ -40,7 +40,10 @@ ui <- shiny::bootstrapPage(tags$head(tags$style(HTML("
                                                   uiOutput("checkbox"),
                                                   
                                                   hr(),
+                                                splitLayout(
                                                   shiny::checkboxInput("labels", "Static site labels", TRUE),
+                                                  shiny::checkboxInput("markers", "Pin markers", TRUE)
+                                                ),
                                                   hr(),
                                                   downloadButton('downloadData', 'Download'),
                                                   helpText("Note: Hover over red circle area* to display capture numbers"),
@@ -107,9 +110,6 @@ server <- function(input, output, session) {
   output$map <- leaflet::renderLeaflet({
     data <- data()
     leaflet::leaflet(data) %>%  
-      mapview::addLogo('https://i0.wp.com/shop.opwall.com/wp-content/uploads/2015/10/cropped-OpWall_circle_blue.png?ssl=1',
-                       src= 'remote', position = 'topleft', alpha=.7,
-                       width = 100, height = 100) %>%
       leaflet::fitBounds(~min(long), ~min(lat), ~max(long), ~max(lat))
     
   })
@@ -123,12 +123,19 @@ server <- function(input, output, session) {
       leaflet::addProviderTiles(input$maptype,
                                 options = providerTileOptions(noWrap = TRUE)) %>%
       leaflet::clearShapes() %>%
-     
-      leaflet::clearMarkers() %>%
-      leaflet::addCircleMarkers(data= sites,lng=~long, lat=~lat, label = ~as.character(Site),
-                          labelOptions = labelOptions(noHide = input$labels),
-                          stroke = FALSE, fillOpacity = 0.7, radius = 6) %>% 
-    leaflet::addCircles(lng=~long, lat=~lat,radius = ~scales::rescale(abundance, to=c(1,10))*800, weight = 1, color = "darkred",
+      leaflet::clearMarkers() 
+     if(input$markers == TRUE){
+       map <- map %>% 
+         leaflet::addMarkers(data= sites,lng=~long, lat=~lat, label = ~as.character(Site),
+                             labelOptions = labelOptions(noHide = input$labels))
+     } else {
+       map <- map %>% 
+         leaflet::addCircleMarkers(data= sites,lng=~long, lat=~lat, label = ~as.character(Site),
+                             labelOptions = labelOptions(noHide = input$labels),
+                             stroke = FALSE, fillOpacity = 0.7, radius = 6)
+     }
+    map <- map %>% 
+      leaflet::addCircles(lng=~long, lat=~lat,radius = ~scales::rescale(abundance, to=c(1,10))*800, weight = 1, color = "darkred",
                         fillOpacity = 0.7, label = ~paste('Number caught: ', abundance, sep='') 
     ) 
     

@@ -55,7 +55,14 @@ server <- function(input, output, session) {
   
     data <- reactive({
       req(input$dataset)
-      read.csv(input$dataset$datapath) %>% mutate(Date = dmy(Date), year = as.numeric(format(Date,'%Y')))
+      data <- read.csv(input$dataset$datapath) %>% mutate(Date = dmy(Date), year = as.numeric(format(Date,'%Y')))
+      req.names <- c("Site", "Species", "Date", "lat", "long")
+      validate(
+        need(all(req.names %in% colnames(data), TRUE) == TRUE,
+             message = paste("\nError: Missing or miss-spelled column names.\nUnmatched columns:\n\n", paste(c(req.names[req.names %in% colnames(data) == FALSE]), collapse="\n"), sep="")
+        )
+      )
+      data
     })
 
     observeEvent(data(), {

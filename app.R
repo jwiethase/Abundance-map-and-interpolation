@@ -123,13 +123,14 @@ server <- function(input, output, session) {
       leaflet::addProviderTiles(input$maptype,
                                 options = providerTileOptions(noWrap = TRUE)) %>%
       leaflet::clearShapes() %>%
-      leaflet::addCircles(lng=~long, lat=~lat,radius = ~scales::rescale(abundance, to=c(1,10))*800, weight = 1, color = "darkred",
-                          fillOpacity = 0.7, label = ~paste('Number caught: ', abundance, sep='') 
-      ) %>% 
+     
       leaflet::clearMarkers() %>%
       leaflet::addCircleMarkers(data= sites,lng=~long, lat=~lat, label = ~as.character(Site),
                           labelOptions = labelOptions(noHide = input$labels),
-                          stroke = FALSE, fillOpacity = 0.5) 
+                          stroke = FALSE, fillOpacity = 0.7, radius = 6) %>% 
+    leaflet::addCircles(lng=~long, lat=~lat,radius = ~scales::rescale(abundance, to=c(1,10))*800, weight = 1, color = "darkred",
+                        fillOpacity = 0.7, label = ~paste('Number caught: ', abundance, sep='') 
+    ) 
     
   })
   

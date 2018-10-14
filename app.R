@@ -66,17 +66,18 @@ server <- function(input, output, session) {
     })
 
     observeEvent(data(), {
-      Species.choices <- data() %>% select(species) %>% unique() %>% arrange(species)
-      updateSelectInput(session, "species.choices", choices= Species.choices$species)
+      Species.choices <- data() %>% select(Species) %>% unique() %>% arrange(Species)
+      updateSelectInput(session, "species.choices", choices= Species.choices$Species)
     })
+    
     
   # Modify the checkbox options for year dependand on the subsetted dataframe
   
     observeEvent(input$species.choices, {
     output$checkbox <- renderUI({
       data <- data()
-    Species <- gsub("[[:space:]]\\(.*$", "", input$species.choices)
-    choice <-  data.frame(year= unique(data[data$species %in% Species, "year"]))
+    Species.choice <- gsub("[[:space:]]\\(.*$", "", input$species.choices)
+    choice <-  data.frame(year= unique(data[data$Species %in% Species.choice, "year"]))
     choice$year <- choice$year[order(choice$year, decreasing = TRUE)]
     checkboxGroupInput(inputId = "checkbox",
                        label = h4("Year"),
@@ -87,18 +88,18 @@ server <- function(input, output, session) {
   # Filter the initial dataframe by species and year chosen
   filteredData <- shiny::reactive({
     data <- data()
-    Species <- gsub("[[:space:]]\\(.*$", "", input$species.choices)
+    Species.choice <- gsub("[[:space:]]\\(.*$", "", input$species.choices)
     data <- data[data$year %in% input$checkbox, ]
-    new_df <- data %>% group_by(species, long, lat, Site) %>% 
-      summarize(abundance= n()) %>% ungroup() %>% dplyr::filter(grepl(Species, species, ignore.case = TRUE) == TRUE)
+    new_df <- data %>% group_by(Species, long, lat, Site) %>% 
+      summarize(abundance= n()) %>% ungroup() %>% dplyr::filter(grepl(Species.choice, Species, ignore.case = TRUE) == TRUE)
   })
   
   # Filter the initial dataframe, but retain all columns. The product will be used for the download button 
   DataDetailed <- shiny::reactive({
     data <- data()
-    Species <- gsub("[[:space:]]\\(.*$", "", input$species.choices)
+    Species.choice <- gsub("[[:space:]]\\(.*$", "", input$species.choices)
     data <- data[data$year %in% input$checkbox, ]
-    new_df <- data %>% dplyr::filter(grepl(Species, species, ignore.case = TRUE) == TRUE)
+    new_df <- data %>% dplyr::filter(grepl(Species.choice, Species, ignore.case = TRUE) == TRUE)
   })
   
   # Make a leaflet map that won't change with the user's input

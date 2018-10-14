@@ -52,6 +52,7 @@ ui <- shiny::bootstrapPage(tags$head(tags$style(HTML("
 
 # Make the server functions
 server <- function(input, output, session) {
+  options(shiny.maxRequestSize=100*1024^2) 
   
     data <- reactive({
       req(input$dataset)
@@ -122,12 +123,13 @@ server <- function(input, output, session) {
       leaflet::addProviderTiles(input$maptype,
                                 options = providerTileOptions(noWrap = TRUE)) %>%
       leaflet::clearShapes() %>%
-      leaflet::addCircles(lng=~long, lat=~lat,radius = ~scales::rescale(abundance, to=c(1,10))*700, weight = 1, color = "darkred",
+      leaflet::addCircles(lng=~long, lat=~lat,radius = ~scales::rescale(abundance, to=c(1,10))*800, weight = 1, color = "darkred",
                           fillOpacity = 0.7, label = ~paste('Number caught: ', abundance, sep='') 
       ) %>% 
       leaflet::clearMarkers() %>%
-      leaflet::addMarkers(data= sites,lng=~long, lat=~lat, label = ~as.character(Site),
-                          labelOptions = labelOptions(noHide = input$labels)) 
+      leaflet::addCircleMarkers(data= sites,lng=~long, lat=~lat, label = ~as.character(Site),
+                          labelOptions = labelOptions(noHide = input$labels),
+                          stroke = FALSE, fillOpacity = 0.5) 
     
   })
   

@@ -123,7 +123,10 @@ server <- function(input, output, session) {
       leaflet::addProviderTiles(input$maptype,
                                 options = providerTileOptions(noWrap = TRUE)) %>%
       leaflet::clearShapes() %>%
-      leaflet::clearMarkers() 
+      leaflet::clearMarkers() %>% 
+      leaflet::addCircles(lng=~long, lat=~lat,radius = ~scales::rescale(abundance, to=c(1,10))*800, weight = 1, color = "darkred",
+                          fillOpacity = 0.7, label = ~paste('Number caught: ', abundance, sep='') 
+      ) 
      if(input$markers == TRUE){
        map <- map %>% 
          leaflet::addMarkers(data= sites,lng=~long, lat=~lat, label = ~as.character(Site),
@@ -132,13 +135,8 @@ server <- function(input, output, session) {
        map <- map %>% 
          leaflet::addCircleMarkers(data= sites,lng=~long, lat=~lat, label = ~as.character(Site),
                              labelOptions = labelOptions(noHide = input$labels),
-                             stroke = FALSE, fillOpacity = 0.7, radius = 6)
+                             fillOpacity = 0.8, radius = 5)
      }
-    map <- map %>% 
-      leaflet::addCircles(lng=~long, lat=~lat,radius = ~scales::rescale(abundance, to=c(1,10))*800, weight = 1, color = "darkred",
-                        fillOpacity = 0.7, label = ~paste('Number caught: ', abundance, sep='') 
-    ) 
-    
   })
   
   # Download the filtered dataframe

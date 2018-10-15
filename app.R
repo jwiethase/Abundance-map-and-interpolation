@@ -55,7 +55,8 @@ ui <- shiny::bootstrapPage(tags$style(" #loadmessage {
                                                                        shiny::checkboxInput("labels", "Static site labels", TRUE),
                                                                        shiny::checkboxInput("markers", "Pin markers", TRUE)
                                                                      ),
-                                                                     shiny::checkboxInput("idw", "Spatial interpolation", FALSE),
+                                                                     shiny::checkboxInput("idw", "Spatial interpolation (idw)", FALSE),
+                                                                     uiOutput("slider"),
                                                                      hr(),
                                                                      downloadButton('downloadData', 'Download')
                                                 ))
@@ -152,11 +153,14 @@ shiny::observe({
                           fillOpacity = 0.7, label = ~paste('Number caught: ', abundance, sep='')) 
     
   } else {
+    output$slider <- renderUI({
+      sliderInput("Slider", "Inverse Distance Weighting Power", min=0, max=5, value=2)
+    })
     new_df <- filteredData()
     validate(
       need(length(rownames(new_df)) > 1, "Not enough data")
     )
-    
+    observeEvent(input$Slider, {
     # Make data frame for mapping
     coords <- cbind(new_df$long, new_df$lat)
     sp = sp::SpatialPoints(coords)
@@ -190,20 +194,22 @@ shiny::observe({
     
     # Interpolate the grid cells using a power value of 2
     # (idp=2.0)
-    P.idw <- gstat::idw(new_df$abundance ~ 1, locations = spdf,
-                        newdata = grd, idp = 2)
     
+    P.idw <- gstat::idw(new_df$abundance ~ 1, locations = spdf,
+                        newdata = grd, idp = input$Slider)
+  
     # Convert to raster object then clip to Oregon/California
     r <- raster::raster(P.idw)
     pal <- colorNumeric(c("#FFFFCC", "#41B6C4", "#0C2C84"), values(r),
                         na.color = "transparent")
     
     map <- map %>% 
+      clearImages() %>% 
       leaflet::addRasterImage(r, colors = pal, opacity = 0.8) %>%
       clearControls() %>% 
       addLegend(pal = pal, values = values(r),
                 title = "Abundance", position = "bottomleft")
-    
+    })
   }
   
   if(input$markers == TRUE){

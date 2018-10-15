@@ -8,6 +8,7 @@ library(raster)
 library(sp)
 library(rgdal)
 library(data.table)
+library(shinyjs)
 
 # Make the user interface
 ui <- shiny::bootstrapPage(tags$style(" #loadmessage {
@@ -29,6 +30,7 @@ ui <- shiny::bootstrapPage(tags$style(" #loadmessage {
                            # Make map span the whole area
                            leaflet::leafletOutput("map", width = "100%", height = "100%"),
                            # Add a side panel for inputs
+                           shinyjs::useShinyjs(), #NEW
                            
                            shiny::absolutePanel(top = 20, right = 20, width = 300,
                                                 draggable = TRUE,
@@ -136,7 +138,9 @@ output$map <- leaflet::renderLeaflet({
     leaflet::fitBounds(~min(long), ~min(lat), ~max(long), ~max(lat))
   
 })
-
+observeEvent(input$idw == TRUE,{
+  toggle("slider")
+})
 # Update above leaflet map depending on user inputs
 shiny::observe({
   data <- data()
@@ -153,6 +157,7 @@ shiny::observe({
                           fillOpacity = 0.7, label = ~paste('Number caught: ', abundance, sep='')) 
     
   } else {
+    
     output$slider <- renderUI({
       sliderInput("Slider", "Inverse Distance Weighting Power", min=0, max=5, value=2)
     })

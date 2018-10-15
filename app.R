@@ -6,6 +6,7 @@ library(scales)
 library (lubridate)
 library(raster)
 library(sp)
+library(rgdal)
 
 # Make the user interface
 ui <- shiny::bootstrapPage(tags$style(" #loadmessage {

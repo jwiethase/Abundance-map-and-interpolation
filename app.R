@@ -4,53 +4,60 @@ library(leaflet)
 library(dplyr)
 library(scales)
 library (lubridate)
-
+library(raster)
+library(sp)
 
 # Make the user interface
-ui <- shiny::bootstrapPage(tags$head(tags$style(HTML("
-                                                     .selectize-input, .selectize-dropdown {
-                                                     font-size: 120%;
-                                                     }
-                                                     "))),  theme = "bootstrap.css",
-                           tags$style(type = "text/css", "html, body {width:100%;height:100%}"),
-                           
+ui <- shiny::bootstrapPage(tags$style(" #loadmessage {
+                                      position: fixed;
+                                      top: 0px;
+                                      left: 0px;
+                                      width: 100%;
+                                      padding: 5px 0px 5px 0px;
+                                      text-align: center;
+                                      font-weight: bold;
+                                      font-size: 100%;
+                                      color: #000000;
+                                      background-color: #ffffff;
+                                      z-index: 105;}",
+                                      ".test_type {font-size: 12px}",
+                                      type = "text/css", "html, body {width:100%;height:100%}"),
+                           conditionalPanel(condition="$('html').hasClass('shiny-busy')",
+                                            tags$div("Loading...",id="loadmessage")),
                            # Make map span the whole area
                            leaflet::leafletOutput("map", width = "100%", height = "100%"),
                            # Add a side panel for inputs
+                           
                            shiny::absolutePanel(top = 20, right = 20, width = 300,
                                                 draggable = TRUE,
-                                                shiny::wellPanel( shiny::fileInput(inputId = 'dataset', 
-                                                                                   label = h4('Choose .csv file to upload'),
-                                                                                   accept = c('.csv')
-                                                ),
-                                                helpText("Warning: Dataset has to include all of the following column names:"),
-                                                hr(),
-                                                helpText("'Species' (Format: Common OR scientific"),
-                                                helpText("'Site'"),
-                                                helpText("'lat'"),
-                                                helpText("'long'"),
-                                                helpText("'Date' (Format: dmy)"),
-                                                hr(),
+                                                shiny::wellPanel(div(class="test_type",
+                                                  id = "tPanel",style = "overflow-y:scroll; max-height: 1000px; opacity: 1",
+                                                  shiny::fileInput(inputId = 'dataset', 
+                                                                   label = h4('Choose .csv file to upload'),
+                                                                   accept = c('.csv')),
+                                                  shiny::helpText("Warning: Dataset has to include all of the following column names:"),
+                                                  shiny::helpText("'Species' (Format: Common OR scientific"),
+                                                  shiny::helpText("'Site'"),
+                                                  shiny::helpText("'lat'"),
+                                                  shiny::helpText("'long'"),
+                                                  shiny::helpText("'Date' (Format: dmy)"),
                                                   shiny::selectInput(inputId = "maptype", 
-                                                                     label = h4("Map type"),
+                                                                     label = h5("Map type"),
                                                                      choices = c('Esri.WorldImagery', 'Esri.WorldTopoMap', 'OpenMapSurfer.Roads', 'Esri.DeLorme', 'OpenTopoMap')),
                                                   shiny::selectInput(inputId = "species.choices", 
-                                                                     label = h4("Species"),
+                                                                     label = h5("Species"),
                                                                      choices = ' '), 
                                                   uiOutput("checkbox"),
-                                                  
                                                   hr(),
-                                                splitLayout(
-                                                  shiny::checkboxInput("labels", "Static site labels", TRUE),
-                                                  shiny::checkboxInput("markers", "Pin markers", TRUE)
-                                                ),
+                                                  splitLayout(
+                                                    shiny::checkboxInput("labels", "Static site labels", TRUE),
+                                                    shiny::checkboxInput("markers", "Pin markers", TRUE)
+                                                  ),
+                                                  shiny::checkboxInput("idw", "Spatial interpolation", FALSE),
                                                   hr(),
-                                                  downloadButton('downloadData', 'Download'),
-                                                  helpText("Note: Hover over red circle area* to display capture numbers"),
-                                                  helpText("*Circles are drawn with capture numbers rescaled from 1 to 10")),
-                                                style = "opacity: 1"
+                                                  downloadButton('downloadData', 'Download')
+                                                ))
                            )
-                           
 )
 
 # Make the server functions
@@ -66,11 +73,12 @@ server <- function(input, output, session) {
              message = paste("\nError: Missing or miss-spelled column names.\nUnmatched columns:\n\n", paste(c(req.names[req.names %in% colnames(data) == FALSE]), collapse="\n"), sep="")
         )
       )
+      
       data
     })
 
     observeEvent(data(), {
-      Species.choices <- data() %>% select(Species) %>% unique() %>% arrange(Species)
+      Species.choices <- data() %>% dplyr::select(Species) %>% unique() %>% arrange(Species)
       updateSelectInput(session, "species.choices", choices= Species.choices$Species)
     })
     
@@ -123,10 +131,67 @@ server <- function(input, output, session) {
       leaflet::addProviderTiles(input$maptype,
                                 options = providerTileOptions(noWrap = TRUE)) %>%
       leaflet::clearShapes() %>%
-      leaflet::clearMarkers() %>% 
-      leaflet::addCircles(lng=~long, lat=~lat,radius = ~scales::rescale(abundance, to=c(1,10))*800, weight = 1, color = "darkred",
-                          fillOpacity = 0.7, label = ~paste('Number caught: ', abundance, sep='') 
-      ) 
+      leaflet::clearMarkers()
+    if(input$idw == FALSE){
+      map <- map %>% 
+        leaflet::addCircles(lng=~long, lat=~lat, radius = ~scales::rescale(abundance, to=c(1,10))*800, weight = 1, color = "darkred",
+                                              fillOpacity = 0.7, label = ~paste('Number caught: ', abundance, sep='')) 
+      
+    } else {
+      new_df <- filteredData()
+      validate(
+        need(length(rownames(new_df)) > 1, "Not enough data")
+      )
+      
+      # Make data frame for mapping
+      coords <- cbind(new_df$long, new_df$lat)
+      sp = sp::SpatialPoints(coords)
+      spdf = sp::SpatialPointsDataFrame(sp, new_df)
+      sp::proj4string(spdf) <- CRS("+init=epsg:4326")
+
+      # Create an empty grid where n is the total number of cells
+      # Define the grid extent:
+
+      x.range <- as.numeric(c(min(new_df$long - 1), max(new_df$long +
+                                                         1)))  # min/max longitude of the interpolation area
+      y.range <- as.numeric(c(min(new_df$lat - 1), max(new_df$lat +
+                                                         1)))  # min/max latitude of the interpolation area
+
+      extent <- data.frame(lon = c(min(new_df$long - 0.5), max(new_df$long +
+                                                                0.5)), lat = c(min(new_df$lat - 0.5), max(new_df$lat +
+                                                                                                            0.5)))
+
+      # expand points to grid
+      grd <- expand.grid(x = seq(from = x.range[1], to = x.range[2],
+                                 by = round((log(length(rownames(new_df))))^2 * 0.007, digits = 3)),
+                         y = seq(from = y.range[1],
+                                 to = y.range[2],
+                                 by = round((log(length(rownames(new_df))))^2 * 0.007, digits = 3)))
+
+      sp::coordinates(grd) <- ~x + y
+      sp::gridded(grd) <- TRUE
+
+      # Add P's projection information to the empty grid
+      sp::proj4string(grd) <- sp::proj4string(spdf)
+
+      # Interpolate the grid cells using a power value of 2
+      # (idp=2.0)
+      P.idw <- gstat::idw(new_df$abundance ~ 1, locations = spdf,
+                          newdata = grd, idp = 2)
+
+      # Convert to raster object then clip to Oregon/California
+      r <- raster::raster(P.idw)
+      pal <- colorNumeric(c("#FFFFCC", "#41B6C4", "#0C2C84"), values(r),
+                          na.color = "transparent")
+      
+      map <- map %>% 
+        leaflet::addRasterImage(r, colors = pal, opacity = 0.8) %>%
+        clearControls() %>% 
+        addLegend(pal = pal, values = values(r),
+                  title = "Abundance", position = "bottomleft")
+
+    }
+ 
      if(input$markers == TRUE){
        map <- map %>% 
          leaflet::addMarkers(data= sites,lng=~long, lat=~lat, label = ~as.character(Site),

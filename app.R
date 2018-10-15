@@ -68,11 +68,23 @@ server <- function(input, output, session) {
   
     data <- reactive({
       req(input$dataset)
-      data <- fread(input$dataset$datapath) %>% mutate(Date = dmy(Date), year = as.numeric(format(Date,'%Y')))
+      data <- read.csv(input$dataset$datapath) %>% mutate(Date = dmy(Date), 
+                                                          year = as.numeric(format(Date,'%Y')),
+                                                          lat = as.integer(as.character(lat)),
+                                                          long = as.integer(as.character(long)))
       req.names <- c("Site", "Species", "Date", "lat", "long")
       validate(
         need(all(req.names %in% colnames(data), TRUE) == TRUE,
              message = paste("\nError: Missing or miss-spelled column names.\nUnmatched columns:\n\n", paste(c(req.names[req.names %in% colnames(data) == FALSE]), collapse="\n"), sep="")
+        )
+      )
+      # Check for non-numeric values in lat and long column
+      coordsDF <- data %>% dplyr::select(lat, long) %>% mutate(lat = as.numeric(lat),
+                                                               long = as.numeric(long))
+
+      validate(
+        need(identical(colnames(coordsDF)[colSums(is.na(coordsDF)) > 0], character(0)), TRUE,
+             message = paste("\nError: Non-numeric value in column: ", paste(c(colnames(coordsDF)[colSums(is.na(coordsDF)) > 0]), collapse="\n"), sep="")
         )
       )
       

@@ -7,6 +7,7 @@ library (lubridate)
 library(raster)
 library(sp)
 library(rgdal)
+library(data.table)
 
 # Make the user interface
 ui <- shiny::bootstrapPage(tags$style(" #loadmessage {
@@ -67,7 +68,7 @@ server <- function(input, output, session) {
   
     data <- reactive({
       req(input$dataset)
-      data <- read.csv(input$dataset$datapath) %>% mutate(Date = dmy(Date), year = as.numeric(format(Date,'%Y')))
+      data <- fread(input$dataset$datapath) %>% mutate(Date = dmy(Date), year = as.numeric(format(Date,'%Y')))
       req.names <- c("Site", "Species", "Date", "lat", "long")
       validate(
         need(all(req.names %in% colnames(data), TRUE) == TRUE,

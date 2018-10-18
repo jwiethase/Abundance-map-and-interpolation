@@ -9,6 +9,7 @@ library(sp)
 library(rgdal)
 library(data.table)
 library(shinyjs)
+library(mapview)
 
 # Make the user interface
 ui <- shiny::bootstrapPage(tags$style(" #loadmessage {
@@ -135,7 +136,8 @@ DataDetailed <- shiny::reactive({
 output$map <- leaflet::renderLeaflet({
   data <- data()
   leaflet::leaflet(data) %>%  
-    leaflet::fitBounds(~min(Longitude), ~min(Latitude), ~max(Longitude), ~max(Latitude))
+    leaflet::fitBounds(~min(Longitude), ~min(Latitude), ~max(Longitude), ~max(Latitude)) %>%
+    addMouseCoordinates(style = "basic")
   
 })
 observeEvent(input$idw == TRUE,{
@@ -218,8 +220,8 @@ shiny::observe({
       leaflet::addMarkers(data= sites,lng=~Longitude, lat=~Latitude, label = ~as.character(Site),
                           clusterOptions = markerClusterOptions(),
                           labelOptions = labelOptions(noHide = TRUE),
-                          popup = paste("Latitude:", ~Latitude, "<br>",
-                                        "Longitude:", ~Longitude))
+                          popup = paste("Latitude:", new_df$lat, "<br>",
+                                        "Longitude:", new_df$lon))
 
 })
 

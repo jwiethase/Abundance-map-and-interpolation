@@ -162,14 +162,14 @@ shiny::observe({
     output$slider <- renderUI({
       sliderInput("Slider", "Inverse Distance Weighting Power", min=0, max=5, value=2)
     })
-    new_df <- filteredData()
+    new_df <- filteredData() %>% dplyr::rename(lon = "Longitude",
+                                               lat = "Latitude")
     validate(
       need(length(rownames(new_df)) > 1, "Not enough data")
     )
     observeEvent(input$Slider, {
       
-      new_df <- filteredData() %>% dplyr::rename(lon = "Longitude",
-                                         lat = "Latitude")
+
       coords <- cbind(new_df$lon, new_df$lat)
       sp = sp::SpatialPoints(coords)
       spdf = sp::SpatialPointsDataFrame(sp, new_df)
@@ -215,8 +215,8 @@ shiny::observe({
       leaflet::addMarkers(data= sites,lng=~Longitude, lat=~Latitude, label = ~as.character(Site),
                           clusterOptions = markerClusterOptions(),
                           labelOptions = labelOptions(noHide = TRUE),
-                          popup = paste("Latitude:", new_df$Latitude, "<br>",
-                                        "Longitude:", new_df$Longitude))
+                          popup = paste("Latitude:", ~Latitude, "<br>",
+                                        "Longitude:", ~Longitude))
 
 })
 

@@ -9,6 +9,7 @@ library(sp)
 library(rgdal)
 library(data.table)
 library(shinyjs)
+library(mapview)
  
 # Make the user interface
 ui <- shiny::bootstrapPage(tags$style(" #loadmessage {
@@ -139,22 +140,49 @@ DataDetailed <- shiny::reactive({
 output$map <- leaflet::renderLeaflet({
   data <- data()
   leaflet::leaflet(data) %>%  
-    leaflet::fitBounds(~min(Longitude), ~min(Latitude), ~max(Longitude), ~max(Latitude)) 
+    leaflet::fitBounds(~min(Longitude), ~min(Latitude), ~max(Longitude), ~max(Latitude)) %>% 
+    addMouseCoordinates() 
   
 })
 observeEvent(input$idw == TRUE,{
   toggle("slider")
 })
 # Update above leaflet map depending on user inputs
+
 shiny::observe({
   data <- data()
   sites <- data %>% dplyr::select(Longitude, Latitude, Site) %>% unique()
   
+  if(input$maptype == "Esri.WorldImagery"){
+    max.Zoom = 17
+  }
+  if(input$maptype == "Esri.WorldTopoMap"){
+    max.Zoom = 16
+  }
+  if(input$maptype == "OpenMapSurfer.Roads"){
+    max.Zoom = 13
+  }
+  # if(input$maptype == "Esri.WorldTopoMap"){
+  #   max.Zoom = 16
+  # }
+  # if(input$maptype == "Esri.WorldTopoMap"){
+  #   max.Zoom = 16
+  # }
+  
+  isolate({
   map <- leaflet::leafletProxy(map = "map", data = filteredData()) %>%
     leaflet::addProviderTiles(input$maptype,
                               options = providerTileOptions(noWrap = TRUE)) %>%
     leaflet::clearShapes() %>%
     leaflet::clearMarkers()
+  })
+  observeEvent(input$maptype, {
+    map <- map %>% 
+      clearTiles() %>% 
+      leaflet::addProviderTiles(input$maptype,
+                                options = providerTileOptions(noWrap = TRUE))
+    
+  })
   if(input$idw == FALSE){
     map <- map %>% 
       leaflet::addCircles(lng=~Longitude, lat=~Latitude, radius = ~scales::rescale(abundance, to=c(1,10))*((max(Longitude+0.3) - min(Longitude-0.3))*1100), weight = 1, color = "darkred",

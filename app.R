@@ -29,9 +29,10 @@ ui <- shiny::bootstrapPage(tags$style(" #loadmessage {
                                             tags$div("Loading...",id="loadmessage")),
                            # Make map span the whole area
                            leaflet::leafletOutput("map", width = "100%", height = "100%"),
-                           # Add a side panel for inputs
-                           shinyjs::useShinyjs(), #NEW
                            
+                           shinyjs::useShinyjs(), # Use for toggling slide input
+                           
+                           # Add a side panel for inputs
                            shiny::absolutePanel(top = 20, right = 20, width = 300,
                                                 draggable = TRUE,
                                                 shiny::wellPanel(div(class="test_type",
@@ -40,10 +41,10 @@ ui <- shiny::bootstrapPage(tags$style(" #loadmessage {
                                                                                       label = h4('Choose .csv file to upload'),
                                                                                       accept = c('.csv')),
                                                                      shiny::helpText("Warning: Dataset has to include all of the following column names:"),
-                                                                     shiny::helpText("'Species' (Format: Common OR scientific"),
+                                                                     shiny::helpText("'Species' (Format: Common OR scientific)"),
                                                                      shiny::helpText("'Site'"),
-                                                                     shiny::helpText("'lat'"),
-                                                                     shiny::helpText("'long'"),
+                                                                     shiny::helpText("'Latitude' (Format: decimal)"),
+                                                                     shiny::helpText("'Longitude' (Format: decimal)"),
                                                                      shiny::helpText("'Date' (Format: dmy)"),
                                                                      shiny::selectInput(inputId = "maptype", 
                                                                                         label = h5("Map type"),
@@ -71,19 +72,22 @@ server <- function(input, output, session) {
   
   data <- reactive({
     req(input$dataset)
-    data <- read.csv(input$dataset$datapath) %>% mutate(Date = dmy(Date), 
-                                                        year = year(Date),
-                                                        lat = as.numeric(as.character(lat)),
-                                                        long = as.numeric(as.character(long)))
-  req.names <- c("Site", "Species", "Date", "lat", "long")
+    data <- fread(input$dataset$datapath) 
+  req.names <- c("Site", "Species", "Date", "Latitude", "Longitude")
   validate(
     need(all(req.names %in% colnames(data), TRUE) == TRUE,
          message = paste("\nError: Missing or miss-spelled column names.\nUnmatched columns:\n\n", paste(c(req.names[req.names %in% colnames(data) == FALSE]), collapse="\n"), sep="")
     )
   )
-  # Check for non-numeric values in lat and long column
-  coordsDF <- data %>% dplyr::select(lat, long) %>% mutate(lat = as.numeric(lat),
-                                                           long = as.numeric(long))
+  data <- data %>%
+    mutate(Date = dmy(Date), 
+           year = year(Date),
+           Latitude = as.numeric(as.character(Latitude)),
+           Longitude = as.numeric(as.character(Longitude)))
+  
+  # Check for non-numeric values in Latitude and Longitude column
+  coordsDF <- data %>% dplyr::select(Latitude, Longitude) %>% mutate(Latitude = as.numeric(Latitude),
+                                                           Longitude = as.numeric(Longitude))
   
   validate(
     need(identical(colnames(coordsDF)[colSums(is.na(coordsDF)) > 0], character(0)), TRUE,
@@ -120,7 +124,7 @@ observeEvent(input$species.choices, {
 filteredData <- shiny::reactive({
   data <- data()
   data <- data[data$year %in% input$checkbox, ]
-  data %>% group_by(Species, long, lat, Site) %>% 
+  data %>% group_by(Species, Longitude, Latitude, Site) %>% 
     summarize(abundance= n()) %>% ungroup() %>% dplyr::filter(grepl(Spec.choice(), Species, ignore.case = TRUE) == TRUE)
 })
 
@@ -135,7 +139,7 @@ DataDetailed <- shiny::reactive({
 output$map <- leaflet::renderLeaflet({
   data <- data()
   leaflet::leaflet(data) %>%  
-    leaflet::fitBounds(~min(long), ~min(lat), ~max(long), ~max(lat))
+    leaflet::fitBounds(~min(Longitude), ~min(Latitude), ~max(Longitude), ~max(Latitude))
   
 })
 observeEvent(input$idw == TRUE,{
@@ -144,7 +148,7 @@ observeEvent(input$idw == TRUE,{
 # Update above leaflet map depending on user inputs
 shiny::observe({
   data <- data()
-  sites <- data %>% dplyr::select(long, lat, Site) %>% unique()
+  sites <- data %>% dplyr::select(Longitude, Latitude, Site) %>% unique()
   
   map <- leaflet::leafletProxy(map = "map", data = filteredData()) %>%
     leaflet::addProviderTiles(input$maptype,
@@ -153,7 +157,7 @@ shiny::observe({
     leaflet::clearMarkers()
   if(input$idw == FALSE){
     map <- map %>% 
-      leaflet::addCircles(lng=~long, lat=~lat, radius = ~scales::rescale(abundance, to=c(1,10))*800, weight = 1, color = "darkred",
+      leaflet::addCircles(lng=~Longitude, lat=~Latitude, radius = ~scales::rescale(abundance, to=c(1,10))*800, weight = 1, color = "darkred",
                           fillOpacity = 0.7, label = ~paste('Number caught: ', abundance, sep='')) 
     
   } else {
@@ -168,7 +172,7 @@ shiny::observe({
     observeEvent(input$Slider, {
       
     # Make data frame for mapping
-    coords <- cbind(new_df$long, new_df$lat)
+    coords <- cbind(new_df$Longitude, new_df$Latitude)
     sp = sp::SpatialPoints(coords)
     spdf = sp::SpatialPointsDataFrame(sp, new_df)
     sp::proj4string(spdf) <- CRS("+init=epsg:4326")
@@ -176,13 +180,13 @@ shiny::observe({
     # Create an empty grid
     # Define the grid extent:
     
-    x.range <- as.numeric(c(min(new_df$long - 1), max(new_df$long +
-                                                        1)))  # min/max longitude of the interpolation area
-    y.range <- as.numeric(c(min(new_df$lat - 1), max(new_df$lat +
-                                                       1)))  # min/max latitude of the interpolation area
+    x.range <- as.numeric(c(min(new_df$Longitude - 1), max(new_df$Longitude +
+                                                        1)))  # min/max Longitude of the interpolation area
+    y.range <- as.numeric(c(min(new_df$Latitude - 1), max(new_df$Latitude +
+                                                       1)))  # min/max Latitude of the interpolation area
     
-    extent <- data.frame(lon = c(min(new_df$long - 0.5), max(new_df$long +
-                                                               0.5)), lat = c(min(new_df$lat - 0.5), max(new_df$lat +
+    extent <- data.frame(lon = c(min(new_df$Longitude - 0.5), max(new_df$Longitude +
+                                                               0.5)), Latitude = c(min(new_df$Latitude - 0.5), max(new_df$Latitude +
                                                                                                            0.5)))
     
     # Expand points to grid
@@ -220,11 +224,11 @@ shiny::observe({
   
   if(input$markers == TRUE){
     map <- map %>% 
-      leaflet::addMarkers(data= sites,lng=~long, lat=~lat, label = ~as.character(Site),
+      leaflet::addMarkers(data= sites,lng=~Longitude, lat=~Latitude, label = ~as.character(Site),
                           labelOptions = labelOptions(noHide = input$labels))
   } else {
     map <- map %>% 
-      leaflet::addCircleMarkers(data= sites,lng=~long, lat=~lat, label = ~as.character(Site),
+      leaflet::addCircleMarkers(data= sites,lng=~Longitude, lat=~Latitude, label = ~as.character(Site),
                                 labelOptions = labelOptions(noHide = input$labels),
                                 fillOpacity = 0.8, radius = 5)
   }

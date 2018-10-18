@@ -166,13 +166,14 @@ shiny::observe({
       need(length(rownames(new_df)) > 1, "Not enough data")
     )
     observeEvent(input$Slider, {
+      
     # Make data frame for mapping
     coords <- cbind(new_df$long, new_df$lat)
     sp = sp::SpatialPoints(coords)
     spdf = sp::SpatialPointsDataFrame(sp, new_df)
     sp::proj4string(spdf) <- CRS("+init=epsg:4326")
     
-    # Create an empty grid where n is the total number of cells
+    # Create an empty grid
     # Define the grid extent:
     
     x.range <- as.numeric(c(min(new_df$long - 1), max(new_df$long +
@@ -184,7 +185,7 @@ shiny::observe({
                                                                0.5)), lat = c(min(new_df$lat - 0.5), max(new_df$lat +
                                                                                                            0.5)))
     
-    # expand points to grid
+    # Expand points to grid
     grd <- expand.grid(x = seq(from = x.range[1], to = x.range[2],
                                by = round((log(length(rownames(new_df))))^2 * 0.007, digits = 3)),
                        y = seq(from = y.range[1],
@@ -194,11 +195,11 @@ shiny::observe({
     sp::coordinates(grd) <- ~x + y
     sp::gridded(grd) <- TRUE
     
-    # Add P's projection information to the empty grid
+    # Add spdf's projection information to the empty grid
     sp::proj4string(grd) <- sp::proj4string(spdf)
     
-    # Interpolate the grid cells using a power value of 2
-    # (idp=2.0)
+    # Interpolate the grid cells using a power value chosen in the input slider
+    # (Default: idp=2.0)
     
     P.idw <- gstat::idw(new_df$abundance ~ 1, locations = spdf,
                         newdata = grd, idp = input$Slider)

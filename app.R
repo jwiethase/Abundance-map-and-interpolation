@@ -58,7 +58,8 @@ ui <- shiny::bootstrapPage(tags$style(" #loadmessage {
                                                                      shiny::checkboxInput("idw", "Spatial interpolation (idw)", FALSE),
                                                                      uiOutput("slider"),
                                                                      hr(),
-                                                                     downloadButton('downloadData', 'Download')
+                                                                     downloadButton('downloadData', 'Download'),
+                                                                     verbatimTextOutput("Click_text")
                                                 ))
                            )
 )
@@ -220,8 +221,8 @@ shiny::observe({
       leaflet::addMarkers(data= sites,lng=~Longitude, lat=~Latitude, label = ~as.character(Site),
                           clusterOptions = markerClusterOptions(),
                           labelOptions = labelOptions(noHide = TRUE),
-                          popup = paste("Latitude:", new_df$lat, "<br>",
-                                        "Longitude:", new_df$lon))
+                          popup = paste("Latitude:", sites$Latitude, "<br>",
+                                        "Longitude:", sites$Longitude))
 
 })
 
@@ -234,5 +235,18 @@ output$downloadData <- downloadHandler(
     write.csv(DataDetailed(), file, row.names = FALSE)
   })
 }
+
+observe({
+  click<-input$map_marker_click
+  if(is.null(click))
+    return()
+  text<-paste("Latitude ", click$lat, "Longtitude ", click$lng)
+  text2<-paste("You've selected point ", click$id)
+  map$clearPopups()
+  map$showPopup(click$lat, click$lng, text)
+  output$Click_text<-renderText({
+    text2
+  })
+})
 
 shiny::shinyApp(ui, server)

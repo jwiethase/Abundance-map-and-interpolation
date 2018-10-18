@@ -153,7 +153,7 @@ shiny::observe({
     leaflet::clearMarkers()
   if(input$idw == FALSE){
     map <- map %>% 
-      leaflet::addCircles(lng=~Longitude, lat=~Latitude, radius = ~scales::rescale(abundance, to=c(1,10))*((max(Longitude+0.3) - min(Longitude-0.3))*1000), weight = 1, color = "darkred",
+      leaflet::addCircles(lng=~Longitude, lat=~Latitude, radius = ~scales::rescale(abundance, to=c(1,10))*((max(Longitude+0.3) - min(Longitude-0.3))*1100), weight = 1, color = "darkred",
                           fillOpacity = 0.7, label = ~paste('Samples: ', abundance, sep=''))  
     
   } else {
@@ -167,27 +167,57 @@ shiny::observe({
     )
     observeEvent(input$Slider, {
       
-    # Make data frame for mapping
-    coord <- new_df
+      new_df <- filteredData() %>% dplyr::rename(lon = "Longitude",
+                                         lat = "Latitude")
+      coords <- cbind(new_df$lon, new_df$lat)
+      sp = sp::SpatialPoints(coords)
+      spdf = sp::SpatialPointsDataFrame(sp, new_df)
+      sp::proj4string(spdf) <- CRS("+init=epsg:4326")
+
+      # Create an empty grid where n is the total number of cells
+      x.range <- as.numeric(c(min(new_df$lon - 1), max(new_df$lon +
+                                                         1)))  # min/max longitude of the interpolation area
+      y.range <- as.numeric(c(min(new_df$lat - 1), max(new_df$lat +
+                                                         1)))  # min/max latitude of the interpolation area
+
+      extent <- data.frame(lon = c(min(new_df$lon - 0.5), max(new_df$lon +
+                                                                0.5)), lat = c(min(new_df$lat - 0.5), max(new_df$lat +
+                                                                                                            0.5)))
+      # expand points to grid
+      grd <- expand.grid(x = seq(from = x.range[1], to = x.range[2],
+                                 by = round((log(length(rownames(new_df))))^2 * 0.007, digits = 3)),
+                         y = seq(from = y.range[1],
+                                 to = y.range[2],
+                                 by = round((log(length(rownames(new_df))))^2 * 0.007, digits = 3)))
+
+      sp::coordinates(grd) <- ~x + y
+      sp::gridded(grd) <- TRUE
+
+      # Add P's projection information to the empty grid
+      sp::proj4string(grd) <- sp::proj4string(spdf)
+
+      
+    # # Make data frame for mapping
+    # coord <- new_df
+    # 
+    # coord$Latitude[coord$Latitude == min(coord$Latitude)] <- min(coord$Latitude) - .5
+    # coord$Latitude[coord$Latitude == max(coord$Latitude)] <- max(coord$Latitude) + .5
+    # coord$Longitude[coord$Longitude == min(coord$Longitude)] <- min(coord$Longitude) - .5
+    # coord$Longitude[coord$Longitude == max(coord$Longitude)] <- max(coord$Longitude) + .5
+    # 
+    # coords <- cbind(coord$Longitude, coord$Latitude)
+    # sp = sp::SpatialPoints(coords)
+    # spdf = sp::SpatialPointsDataFrame(sp, coord)
+    # sp::proj4string(spdf) <- CRS("+init=epsg:4326")
+    # 
+    # grd              <- as.data.frame(spsample(spdf, "regular", n=100000))
+    # names(grd)       <- c("X", "Y")
+    # coordinates(grd) <- c("X", "Y")
+    # gridded(grd)     <- TRUE  # Create SpatialPixel object
+    # fullgrid(grd)    <- TRUE  # Create SpatialGrid object
+    # 
+    # sp::proj4string(grd) <- sp::proj4string(spdf)
     
-    coord$Latitude[coord$Latitude == min(coord$Latitude)] <- min(coord$Latitude) - .5
-    coord$Latitude[coord$Latitude == max(coord$Latitude)] <- max(coord$Latitude) + .5
-    coord$Longitude[coord$Longitude == min(coord$Longitude)] <- min(coord$Longitude) - .5
-    coord$Longitude[coord$Longitude == max(coord$Longitude)] <- max(coord$Longitude) + .5
-    
-    coords <- cbind(coord$Longitude, coord$Latitude) 
-    sp = sp::SpatialPoints(coords)
-    spdf = sp::SpatialPointsDataFrame(sp, coord)
-    sp::proj4string(spdf) <- CRS("+init=epsg:4326")
-    
-    grd              <- as.data.frame(spsample(spdf, "regular", n=50000))
-    names(grd)       <- c("X", "Y")
-    coordinates(grd) <- c("X", "Y")
-    gridded(grd)     <- TRUE  # Create SpatialPixel object
-    fullgrid(grd)    <- TRUE  # Create SpatialGrid object
-    
-    # Add P's projection information to the empty grid
-    proj4string(grd) <- proj4string(spdf)
     
     P.idw <- gstat::idw(new_df$abundance ~ 1, locations = spdf,
                         newdata = grd, idp = input$Slider)
@@ -209,8 +239,9 @@ shiny::observe({
     map <- map %>% 
       leaflet::addMarkers(data= sites,lng=~Longitude, lat=~Latitude, label = ~as.character(Site),
                           clusterOptions = markerClusterOptions(),
-                          labelOptions = labelOptions(noHide = TRUE)
-                          ) 
+                          labelOptions = labelOptions(noHide = TRUE),
+                          popup = paste("Latitude:", new_df$Latitude, "<br>",
+                                        "Longitude:", new_df$Longitude))
 
 })
 

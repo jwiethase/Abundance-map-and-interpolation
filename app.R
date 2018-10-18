@@ -10,22 +10,6 @@ library(rgdal)
 library(data.table)
 library(shinyjs)
 
-# data <- fread(file.choose())
-# max(data$Longitude +1) - min(data$Longitude - 1) 
-# 2.5726 Guy
-# 7.692329 Humb
-# 181 OBIS
-# test <- data %>% group_by(Latitude, Longitude) %>% mutate(SiteID = group_number())
-# group_number = get_group_number()
-# 
-# get_group_number = function(){
-#   i = 0
-#   function(){
-#     i <<- i+1
-#     i
-#   }
-# }
-
 # Make the user interface
 ui <- shiny::bootstrapPage(tags$style(" #loadmessage {
                                       position: fixed;
@@ -49,7 +33,7 @@ ui <- shiny::bootstrapPage(tags$style(" #loadmessage {
                            shinyjs::useShinyjs(), # Use for toggling slide input
                            
                            # Add a side panel for inputs
-                           shiny::absolutePanel(top = 20, right = 20, width = 400,
+                           shiny::absolutePanel(top = 20, right = 20, width = 300,
                                                 draggable = TRUE,
                                                 shiny::wellPanel(div(class="test_type",
                                                                      id = "tPanel",style = "overflow-y:scroll; max-height: 1000px; opacity: 1",
@@ -70,10 +54,7 @@ ui <- shiny::bootstrapPage(tags$style(" #loadmessage {
                                                                                         choices = ' '), 
                                                                      uiOutput("checkbox"),
                                                                      hr(),
-                                                                     splitLayout(
-                                                                       shiny::checkboxInput("labels", "Static site labels", TRUE),
-                                                                       shiny::checkboxInput("idw", "Spatial interpolation (idw)", FALSE)
-                                                                     ),
+                                                                     shiny::checkboxInput("idw", "Spatial interpolation (idw)", FALSE),
                                                                      uiOutput("slider"),
                                                                      hr(),
                                                                      downloadButton('downloadData', 'Download')
@@ -207,31 +188,6 @@ shiny::observe({
     
     # Add P's projection information to the empty grid
     proj4string(grd) <- proj4string(spdf)
-    
-    
-    # # Create an empty grid
-    # # Define the grid extent:
-    # 
-    # x.range <- as.numeric(c(min(new_df$Longitude - 1),
-    #                         max(new_df$Longitude + 1)))  # min/max Longitude of the interpolation area
-    # y.range <- as.numeric(c(min(new_df$Latitude - 1),
-    #                         max(new_df$Latitude + 1)))  # min/max Latitude of the interpolation area
-    # 
-    # # Expand points to grid
-    # grd <- expand.grid(x = seq(from = x.range[1], to = x.range[2],
-    #                            by = round((log(length(rownames(data))))^2 * 0.0007, digits = 5)),
-    #                    y = seq(from = y.range[1],
-    #                            to = y.range[2],
-    #                            by = round((log(length(rownames(new_df))))^2 * 0.0007, digits = 5)))
-    # 
-    # sp::coordinates(grd) <- ~x + y
-    # sp::gridded(grd) <- TRUE
-    # 
-    # # Add spdf's projection information to the empty grid
-    # sp::proj4string(grd) <- sp::proj4string(spdf)
-    # 
-    # Interpolate the grid cells using a power value chosen in the input slider
-    # (Default: idp=2.0)
     
     P.idw <- gstat::idw(new_df$abundance ~ 1, locations = spdf,
                         newdata = grd, idp = input$Slider)

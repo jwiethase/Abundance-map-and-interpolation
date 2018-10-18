@@ -167,61 +167,35 @@ shiny::observe({
     )
     observeEvent(input$Slider, {
       
-      # new_df <- filteredData() %>% dplyr::rename(lon = "Longitude",
-      #                                    lat = "Latitude")
-      # coords <- cbind(new_df$lon, new_df$lat)
-      # sp = sp::SpatialPoints(coords)
-      # spdf = sp::SpatialPointsDataFrame(sp, new_df)
-      # sp::proj4string(spdf) <- CRS("+init=epsg:4326")
-      # 
-      # # Create an empty grid where n is the total number of cells
-      # x.range <- as.numeric(c(min(new_df$lon - 1), max(new_df$lon +
-      #                                                    1)))  # min/max longitude of the interpolation area
-      # y.range <- as.numeric(c(min(new_df$lat - 1), max(new_df$lat +
-      #                                                    1)))  # min/max latitude of the interpolation area
-      # 
-      # extent <- data.frame(lon = c(min(new_df$lon - 0.5), max(new_df$lon +
-      #                                                           0.5)), lat = c(min(new_df$lat - 0.5), max(new_df$lat +
-      #                                                                                                       0.5)))
-      # # expand points to grid
-      # grd <- expand.grid(x = seq(from = x.range[1], to = x.range[2],
-      #                            by = round((log(length(rownames(new_df)))) * 0.004, digits = 3)),
-      #                    y = seq(from = y.range[1],
-      #                            to = y.range[2],
-      #                            by = round((log(length(rownames(new_df)))) * 0.004, digits = 3)))
-      # 
-      # sp::coordinates(grd) <- ~x + y
-      # sp::gridded(grd) <- TRUE
-      # 
-      # # Add P's projection information to the empty grid
-      # sp::proj4string(grd) <- sp::proj4string(spdf)
+      new_df <- filteredData() %>% dplyr::rename(lon = "Longitude",
+                                         lat = "Latitude")
+      coords <- cbind(new_df$lon, new_df$lat)
+      sp = sp::SpatialPoints(coords)
+      spdf = sp::SpatialPointsDataFrame(sp, new_df)
+      sp::proj4string(spdf) <- CRS("+init=epsg:4326")
 
+      # Create an empty grid where n is the total number of cells
+      x.range <- as.numeric(c(min(new_df$lon - 1), max(new_df$lon +
+                                                         1)))  # min/max longitude of the interpolation area
+      y.range <- as.numeric(c(min(new_df$lat - 1), max(new_df$lat +
+                                                         1)))  # min/max latitude of the interpolation area
 
-    # Make data frame for mapping
-    coord <- new_df
+      extent <- data.frame(lon = c(min(new_df$lon - 0.5), max(new_df$lon +
+                                                                0.5)), lat = c(min(new_df$lat - 0.5), max(new_df$lat +
+                                                                                                            0.5)))
+      # expand points to grid
+      grd <- expand.grid(x = seq(from = x.range[1], to = x.range[2],
+                                 by = round((log(length(rownames(new_df)))) * 0.004, digits = 3)),
+                         y = seq(from = y.range[1],
+                                 to = y.range[2],
+                                 by = round((log(length(rownames(new_df)))) * 0.004, digits = 3)))
 
-    coord$Latitude[coord$Latitude == min(coord$Latitude)] <- min(coord$Latitude) - .5
-    coord$Latitude[coord$Latitude == max(coord$Latitude)] <- max(coord$Latitude) + .5
-    coord$Longitude[coord$Longitude == min(coord$Longitude)] <- min(coord$Longitude) - .5
-    coord$Longitude[coord$Longitude == max(coord$Longitude)] <- max(coord$Longitude) + .5
+      sp::coordinates(grd) <- ~x + y
+      sp::gridded(grd) <- TRUE
 
-    coords <- cbind(coord$Longitude, coord$Latitude)
-    sp = sp::SpatialPoints(coords)
-    spdf = sp::SpatialPointsDataFrame(sp, coord)
-    sp::proj4string(spdf) <- CRS("+init=epsg:4326")
+      # Add P's projection information to the empty grid
+      sp::proj4string(grd) <- sp::proj4string(spdf)
 
-    grd              <- as.data.frame(spsample(spdf, "regular", n=100000))
-    names(grd)       <- c("X", "Y")
-    coordinates(grd) <- c("X", "Y")
-    gridded(grd)     <- TRUE  # Create SpatialPixel object
-    fullgrid(grd)    <- TRUE  # Create SpatialGrid object
-
-    sp::proj4string(grd) <- sp::proj4string(spdf)
-
-    
-    P.idw <- gstat::idw(new_df$abundance ~ 1, locations = spdf,
-                        newdata = grd, idp = input$Slider)
-  
     # Convert to raster object
     r <- raster::raster(P.idw)
     pal <- colorNumeric(c("#FFFFCC", "#41B6C4", "#0C2C84"), values(r),

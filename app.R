@@ -9,8 +9,7 @@ library(sp)
 library(rgdal)
 library(data.table)
 library(shinyjs)
-library(mapview)
-
+ 
 # Make the user interface
 ui <- shiny::bootstrapPage(tags$style(" #loadmessage {
                                       position: fixed;
@@ -34,10 +33,11 @@ ui <- shiny::bootstrapPage(tags$style(" #loadmessage {
                            shinyjs::useShinyjs(), # Use for toggling slide input
                            
                            # Add a side panel for inputs
-                           shiny::absolutePanel(top = 20, right = 20, width = 300,
+                           shiny::absolutePanel(top = 20, right = 20, width = 350,
                                                 draggable = TRUE,
                                                 shiny::wellPanel(div(class="test_type",
                                                                      id = "tPanel",style = "overflow-y:scroll; max-height: 1000px; opacity: 1",
+                                                                     uiOutput("out"),
                                                                      shiny::fileInput(inputId = 'dataset', 
                                                                                       label = h5('Choose .csv file to upload'),
                                                                                       accept = c('.csv')),
@@ -55,11 +55,13 @@ ui <- shiny::bootstrapPage(tags$style(" #loadmessage {
                                                                                         choices = ' '), 
                                                                      uiOutput("checkbox"),
                                                                      hr(),
-                                                                     shiny::checkboxInput("idw", "Spatial interpolation (idw)", FALSE),
+                                                                     splitLayout(
+                                                                     shiny::checkboxInput("idw", "Interpolation (idw)", FALSE),
+                                                                     shiny::checkboxInput("labels", "Static labels", TRUE)
+                                                                     ),
                                                                      uiOutput("slider"),
                                                                      hr(),
-                                                                     downloadButton('downloadData', 'Download'),
-                                                                     verbatimTextOutput("Click_text")
+                                                                     downloadButton('downloadData', 'Download')
                                                 ))
                            )
 )
@@ -67,7 +69,7 @@ ui <- shiny::bootstrapPage(tags$style(" #loadmessage {
 # Make the server functions
 server <- function(input, output, session) {
   options(shiny.maxRequestSize=100*1024^2) 
-  
+  output$MAPID_click <- 
   data <- reactive({
     req(input$dataset)
     data <- fread(input$dataset$datapath) 
@@ -137,8 +139,7 @@ DataDetailed <- shiny::reactive({
 output$map <- leaflet::renderLeaflet({
   data <- data()
   leaflet::leaflet(data) %>%  
-    leaflet::fitBounds(~min(Longitude), ~min(Latitude), ~max(Longitude), ~max(Latitude)) %>%
-    addMouseCoordinates(style = "basic")
+    leaflet::fitBounds(~min(Longitude), ~min(Latitude), ~max(Longitude), ~max(Latitude)) 
   
 })
 observeEvent(input$idw == TRUE,{
@@ -200,7 +201,7 @@ shiny::observe({
       # Add P's projection information to the empty grid
       sp::proj4string(grd) <- sp::proj4string(spdf)
 
-      # Run the interpolation
+      # Run the interpolation f
       P.idw <- gstat::idw(new_df$abundance ~ 1, locations = spdf, newdata = grd, idp = input$Slider)
       
     # Convert to raster object
@@ -218,12 +219,24 @@ shiny::observe({
     })
   }
     map <- map %>% 
+      clearMarkers() %>% 
+      clearControls() %>% 
+      clearMarkerClusters() %>% 
       leaflet::addMarkers(data= sites,lng=~Longitude, lat=~Latitude, label = ~as.character(Site),
                           clusterOptions = markerClusterOptions(),
-                          labelOptions = labelOptions(noHide = TRUE),
+                          labelOptions = labelOptions(noHide = input$labels),
                           popup = paste("Latitude:", sites$Latitude, "<br>",
                                         "Longitude:", sites$Longitude))
 
+})
+
+output$out <- renderPrint({
+  validate(need(input$map_click, FALSE))
+  output$out <- renderUI({
+    df <- input$map_click
+    textInput("Coords", "Clicked coordinates:", value = paste(round(df[[1]], digits= 4), ", ", round(df[[2]], digits= 4), sep = ""))
+  })
+  str(input$map_click)
 })
 
 # Download the filtered dataframe
@@ -235,18 +248,5 @@ output$downloadData <- downloadHandler(
     write.csv(DataDetailed(), file, row.names = FALSE)
   })
 }
-
-observe({
-  click<-input$map_marker_click
-  if(is.null(click))
-    return()
-  text<-paste("Latitude ", click$lat, "Longtitude ", click$lng)
-  text2<-paste("You've selected point ", click$id)
-  map$clearPopups()
-  map$showPopup(click$lat, click$lng, text)
-  output$Click_text<-renderText({
-    text2
-  })
-})
 
 shiny::shinyApp(ui, server)

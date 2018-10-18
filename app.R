@@ -35,7 +35,7 @@ ui <- shiny::bootstrapPage(tags$style(" #loadmessage {
                            
                            # Add a side panel for inputs
                            shiny::absolutePanel(top = 20, right = 20, width = 350,
-                                                draggable = TRUE,
+                                                draggable = FALSE,
                                                 shiny::wellPanel(div(class="test_type",
                                                                      id = "tPanel",style = "overflow-y:scroll; max-height: 1000px; opacity: 1",
                                                                      uiOutput("out"),
@@ -140,7 +140,7 @@ DataDetailed <- shiny::reactive({
 output$map <- leaflet::renderLeaflet({
   data <- data()
   leaflet::leaflet(data) %>%  
-    leaflet::fitBounds(~min(Longitude), ~min(Latitude), ~max(Longitude), ~max(Latitude)) %>% 
+    leaflet::fitBounds(~min(Longitude+.1), ~min(Latitude), ~max(Longitude+.1), ~max(Latitude)) %>% 
     addMouseCoordinates() 
   
 })
@@ -162,32 +162,31 @@ shiny::observe({
   if(input$maptype == "OpenMapSurfer.Roads"){
     max.Zoom = 13
   }
-  # if(input$maptype == "Esri.WorldTopoMap"){
-  #   max.Zoom = 16
-  # }
-  # if(input$maptype == "Esri.WorldTopoMap"){
-  #   max.Zoom = 16
-  # }
+  if(input$maptype == "Esri.DeLorme"){
+    max.Zoom = 11
+  }
+  if(input$maptype == "OpenTopoMap"){
+    max.Zoom = 12
+  }
   
-  isolate({
   map <- leaflet::leafletProxy(map = "map", data = filteredData()) %>%
     leaflet::addProviderTiles(input$maptype,
-                              options = providerTileOptions(noWrap = TRUE)) %>%
+                              options = providerTileOptions(noWrap = TRUE, maxZoom = max.Zoom)) %>%
     leaflet::clearShapes() %>%
     leaflet::clearMarkers()
-  })
+
   observeEvent(input$maptype, {
     map <- map %>% 
       clearTiles() %>% 
       leaflet::addProviderTiles(input$maptype,
-                                options = providerTileOptions(noWrap = TRUE))
+                                options = providerTileOptions(noWrap = TRUE, maxZoom = max.Zoom))
     
   })
   if(input$idw == FALSE){
     map <- map %>% 
       leaflet::addCircles(lng=~Longitude, lat=~Latitude, radius = ~scales::rescale(abundance, to=c(1,10))*((max(Longitude+0.3) - min(Longitude-0.3))*1100), weight = 1, color = "darkred",
                           fillOpacity = 0.7, label = ~paste('Samples: ', abundance, sep='')) %>%  
-      leaflet::fitBounds(~min(Longitude-.5), ~min(Latitude-.5), ~max(Longitude+.5), ~max(Latitude+.5))
+      leaflet::fitBounds(~min(Longitude+.5), ~min(Latitude-.5), ~max(Longitude+.5), ~max(Latitude+.5))
     
   } else {
     
@@ -243,7 +242,7 @@ shiny::observe({
       clearControls() %>% 
       addLegend(pal = pal, values = values(r),
                 title = "Abundance", position = "bottomleft") %>%  
-      leaflet::fitBounds(~min(Longitude-.2), ~min(Latitude-.2), ~max(Longitude+.2), ~max(Latitude+.2))
+      leaflet::fitBounds(~min(Longitude+.2), ~min(Latitude-.2), ~max(Longitude+.2), ~max(Latitude+.2))
     })
   }
     map <- map %>% 

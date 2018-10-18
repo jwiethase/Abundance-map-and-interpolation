@@ -10,6 +10,22 @@ library(rgdal)
 library(data.table)
 library(shinyjs)
 
+# data <- fread(file.choose())
+# max(data$Longitude +1) - min(data$Longitude - 1) 
+# 2.5726 Guy
+# 7.692329 Humb
+# 181 OBIS
+# test <- data %>% group_by(Latitude, Longitude) %>% mutate(SiteID = group_number())
+# group_number = get_group_number()
+# 
+# get_group_number = function(){
+#   i = 0
+#   function(){
+#     i <<- i+1
+#     i
+#   }
+# }
+
 # Make the user interface
 ui <- shiny::bootstrapPage(tags$style(" #loadmessage {
                                       position: fixed;
@@ -33,7 +49,7 @@ ui <- shiny::bootstrapPage(tags$style(" #loadmessage {
                            shinyjs::useShinyjs(), # Use for toggling slide input
                            
                            # Add a side panel for inputs
-                           shiny::absolutePanel(top = 20, right = 20, width = 300,
+                           shiny::absolutePanel(top = 20, right = 20, width = 400,
                                                 draggable = TRUE,
                                                 shiny::wellPanel(div(class="test_type",
                                                                      id = "tPanel",style = "overflow-y:scroll; max-height: 1000px; opacity: 1",
@@ -56,9 +72,8 @@ ui <- shiny::bootstrapPage(tags$style(" #loadmessage {
                                                                      hr(),
                                                                      splitLayout(
                                                                        shiny::checkboxInput("labels", "Static site labels", TRUE),
-                                                                       shiny::checkboxInput("markers", "Pin markers", TRUE)
+                                                                       shiny::checkboxInput("idw", "Spatial interpolation (idw)", FALSE)
                                                                      ),
-                                                                     shiny::checkboxInput("idw", "Spatial interpolation (idw)", FALSE),
                                                                      uiOutput("slider"),
                                                                      hr(),
                                                                      downloadButton('downloadData', 'Download')
@@ -157,8 +172,8 @@ shiny::observe({
     leaflet::clearMarkers()
   if(input$idw == FALSE){
     map <- map %>% 
-      leaflet::addCircles(lng=~Longitude, lat=~Latitude, radius = ~scales::rescale(abundance, to=c(1,10))*800, weight = 1, color = "darkred",
-                          fillOpacity = 0.7, label = ~paste('Number caught: ', abundance, sep='')) 
+      leaflet::addCircles(lng=~Longitude, lat=~Latitude, radius = ~scales::rescale(abundance, to=c(1,10))*((max(Longitude+0.3) - min(Longitude-0.3))*1000), weight = 1, color = "darkred",
+                          fillOpacity = 0.7, label = ~paste('Samples: ', abundance, sep=''))  
     
   } else {
     
@@ -172,36 +187,49 @@ shiny::observe({
     observeEvent(input$Slider, {
       
     # Make data frame for mapping
-    coords <- cbind(new_df$Longitude, new_df$Latitude)
+    coord <- new_df
+    
+    coord$Latitude[coord$Latitude == min(coord$Latitude)] <- min(coord$Latitude) - .5
+    coord$Latitude[coord$Latitude == max(coord$Latitude)] <- max(coord$Latitude) + .5
+    coord$Longitude[coord$Longitude == min(coord$Longitude)] <- min(coord$Longitude) - .5
+    coord$Longitude[coord$Longitude == max(coord$Longitude)] <- max(coord$Longitude) + .5
+    
+    coords <- cbind(coord$Longitude, coord$Latitude) 
     sp = sp::SpatialPoints(coords)
-    spdf = sp::SpatialPointsDataFrame(sp, new_df)
+    spdf = sp::SpatialPointsDataFrame(sp, coord)
     sp::proj4string(spdf) <- CRS("+init=epsg:4326")
     
-    # Create an empty grid
-    # Define the grid extent:
+    grd              <- as.data.frame(spsample(spdf, "regular", n=50000))
+    names(grd)       <- c("X", "Y")
+    coordinates(grd) <- c("X", "Y")
+    gridded(grd)     <- TRUE  # Create SpatialPixel object
+    fullgrid(grd)    <- TRUE  # Create SpatialGrid object
     
-    x.range <- as.numeric(c(min(new_df$Longitude - 1), max(new_df$Longitude +
-                                                        1)))  # min/max Longitude of the interpolation area
-    y.range <- as.numeric(c(min(new_df$Latitude - 1), max(new_df$Latitude +
-                                                       1)))  # min/max Latitude of the interpolation area
+    # Add P's projection information to the empty grid
+    proj4string(grd) <- proj4string(spdf)
     
-    extent <- data.frame(lon = c(min(new_df$Longitude - 0.5), max(new_df$Longitude +
-                                                               0.5)), Latitude = c(min(new_df$Latitude - 0.5), max(new_df$Latitude +
-                                                                                                           0.5)))
     
-    # Expand points to grid
-    grd <- expand.grid(x = seq(from = x.range[1], to = x.range[2],
-                               by = round((log(length(rownames(new_df))))^2 * 0.007, digits = 3)),
-                       y = seq(from = y.range[1],
-                               to = y.range[2],
-                               by = round((log(length(rownames(new_df))))^2 * 0.007, digits = 3)))
-    
-    sp::coordinates(grd) <- ~x + y
-    sp::gridded(grd) <- TRUE
-    
-    # Add spdf's projection information to the empty grid
-    sp::proj4string(grd) <- sp::proj4string(spdf)
-    
+    # # Create an empty grid
+    # # Define the grid extent:
+    # 
+    # x.range <- as.numeric(c(min(new_df$Longitude - 1),
+    #                         max(new_df$Longitude + 1)))  # min/max Longitude of the interpolation area
+    # y.range <- as.numeric(c(min(new_df$Latitude - 1),
+    #                         max(new_df$Latitude + 1)))  # min/max Latitude of the interpolation area
+    # 
+    # # Expand points to grid
+    # grd <- expand.grid(x = seq(from = x.range[1], to = x.range[2],
+    #                            by = round((log(length(rownames(data))))^2 * 0.0007, digits = 5)),
+    #                    y = seq(from = y.range[1],
+    #                            to = y.range[2],
+    #                            by = round((log(length(rownames(new_df))))^2 * 0.0007, digits = 5)))
+    # 
+    # sp::coordinates(grd) <- ~x + y
+    # sp::gridded(grd) <- TRUE
+    # 
+    # # Add spdf's projection information to the empty grid
+    # sp::proj4string(grd) <- sp::proj4string(spdf)
+    # 
     # Interpolate the grid cells using a power value chosen in the input slider
     # (Default: idp=2.0)
     
@@ -218,20 +246,16 @@ shiny::observe({
       leaflet::addRasterImage(r, colors = pal, opacity = 0.8) %>%
       clearControls() %>% 
       addLegend(pal = pal, values = values(r),
-                title = "Abundance", position = "bottomleft")
+                title = "Abundance", position = "bottomleft") %>%  
+      leaflet::fitBounds(~min(Longitude-.2), ~min(Latitude-.2), ~max(Longitude+.2), ~max(Latitude+.2))
     })
   }
-  
-  if(input$markers == TRUE){
     map <- map %>% 
       leaflet::addMarkers(data= sites,lng=~Longitude, lat=~Latitude, label = ~as.character(Site),
-                          labelOptions = labelOptions(noHide = input$labels))
-  } else {
-    map <- map %>% 
-      leaflet::addCircleMarkers(data= sites,lng=~Longitude, lat=~Latitude, label = ~as.character(Site),
-                                labelOptions = labelOptions(noHide = input$labels),
-                                fillOpacity = 0.8, radius = 5)
-  }
+                          clusterOptions = markerClusterOptions(),
+                          labelOptions = labelOptions(noHide = TRUE)
+                          ) 
+
 })
 
 # Download the filtered dataframe

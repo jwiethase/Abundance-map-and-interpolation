@@ -193,10 +193,13 @@ shiny::observe({
 
       sp::coordinates(grd) <- ~x + y
       sp::gridded(grd) <- TRUE
-
+      
       # Add P's projection information to the empty grid
       sp::proj4string(grd) <- sp::proj4string(spdf)
 
+      # Run the interpolation
+      P.idw <- gstat::idw(new_df$abundance ~ 1, locations = spdf, newdata = grd, idp = input$Slider)
+      
     # Convert to raster object
     r <- raster::raster(P.idw)
     pal <- colorNumeric(c("#FFFFCC", "#41B6C4", "#0C2C84"), values(r),

@@ -153,8 +153,9 @@ shiny::observe({
     leaflet::clearMarkers()
   if(input$idw == FALSE){
     map <- map %>% 
-      leaflet::addCircles(lng=~Longitude, lat=~Latitude, radius = ~scales::rescale(abundance, to=c(1,10))*((max(Longitude+0.3) - min(Longitude-0.3))*1000), weight = 1, color = "darkred",
-                          fillOpacity = 0.7, label = ~paste('Samples: ', abundance, sep=''))  
+      leaflet::addCircles(lng=~Longitude, lat=~Latitude, radius = ~scales::rescale(abundance, to=c(1,10))*((max(Longitude+0.3) - min(Longitude-0.3))*1100), weight = 1, color = "darkred",
+                          fillOpacity = 0.7, label = ~paste('Samples: ', abundance, sep='')) %>%  
+      leaflet::fitBounds(~min(Longitude-.5), ~min(Latitude-.5), ~max(Longitude+.5), ~max(Latitude+.5))
     
   } else {
     

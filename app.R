@@ -245,6 +245,7 @@ shiny::observe({
       leaflet::fitBounds(~min(Longitude+.2), ~min(Latitude-.2), ~max(Longitude+.2), ~max(Latitude+.2))
     })
   }
+  observeEvent(input$labels,{
     map <- map %>% 
       clearMarkers() %>% 
       clearControls() %>% 
@@ -254,7 +255,7 @@ shiny::observe({
                           labelOptions = labelOptions(noHide = input$labels),
                           popup = paste("Latitude:", sites$Latitude, "<br>",
                                         "Longitude:", sites$Longitude))
-
+  })
 })
 
 output$out <- renderPrint({

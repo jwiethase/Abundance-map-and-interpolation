@@ -47,9 +47,6 @@ ui <- shiny::bootstrapPage(tags$style(" #loadmessage {
                                                                      shiny::helpText("'Latitude' (Format: decimal)"),
                                                                      shiny::helpText("'Longitude' (Format: decimal)"),
                                                                      shiny::helpText("'Date' (Format: dmy)"),
-                                                                     shiny::selectInput(inputId = "maptype", 
-                                                                                        label = h5("Map type"),
-                                                                                        choices = c('Esri.WorldImagery', 'Esri.WorldTopoMap', 'OpenMapSurfer.Roads', 'Esri.DeLorme', 'OpenTopoMap')),
                                                                      shiny::selectInput(inputId = "species.choices", 
                                                                                         label = h5("Species"),
                                                                                         choices = ' '), 
@@ -140,7 +137,22 @@ DataDetailed <- shiny::reactive({
 output$map <- leaflet::renderLeaflet({
   data <- data()
   leaflet::leaflet(data) %>%  
-    leaflet::fitBounds(~min(Longitude+.1), ~min(Latitude), ~max(Longitude+.1), ~max(Latitude)) 
+    leaflet::fitBounds(~min(Longitude+.1), ~min(Latitude), ~max(Longitude+.1), ~max(Latitude)) %>%  
+    addProviderTiles(providers$Esri.WorldImagery, group = "Esri.WorldImagery",
+                     options = providerTileOptions(maxZoom = 17)) %>%
+    addProviderTiles(providers$Esri.WorldTopoMap, group = "Esri.WorldTopoMap",
+                     options = providerTileOptions(maxZoom = 16)) %>%
+    addProviderTiles(providers$OpenMapSurfer.Roads, group = "OpenMapSurfer.Roads",
+                     options = providerTileOptions(maxZoom = 13)) %>%
+    addProviderTiles(providers$Esri.DeLorme, group = "Esri.DeLorme",
+                     options = providerTileOptions(maxZoom = 11)) %>%
+    addProviderTiles(providers$OpenTopoMap, group = "OpenTopoMap",
+                     options = providerTileOptions(maxZoom = 12)) %>%
+    addLayersControl(
+      baseGroups = c('Esri.WorldImagery', 'Esri.WorldTopoMap', 'OpenMapSurfer.Roads', 'Esri.DeLorme', 'OpenTopoMap'),
+      options = layersControlOptions(collapsed = TRUE),
+      position = "topleft"
+    )
   
 })
 observeEvent(input$idw == TRUE,{
@@ -152,35 +164,7 @@ shiny::observe({
   data <- data()
   sites <- data %>% dplyr::select(Longitude, Latitude, Site) %>% unique()
   
-  if(input$maptype == "Esri.WorldImagery"){
-    max.Zoom = 17
-  }
-  if(input$maptype == "Esri.WorldTopoMap"){
-    max.Zoom = 16
-  }
-  if(input$maptype == "OpenMapSurfer.Roads"){
-    max.Zoom = 13
-  }
-  if(input$maptype == "Esri.DeLorme"){
-    max.Zoom = 11
-  }
-  if(input$maptype == "OpenTopoMap"){
-    max.Zoom = 12
-  }
-  
-  map <- leaflet::leafletProxy(map = "map", data = filteredData()) %>%
-    leaflet::addProviderTiles(input$maptype,
-                              options = providerTileOptions(noWrap = TRUE, maxZoom = max.Zoom)) %>%
-    leaflet::clearShapes() %>%
-    leaflet::clearMarkers()
-
-  observeEvent(input$maptype, {
-    map <- map %>% 
-      clearTiles() %>% 
-      leaflet::addProviderTiles(input$maptype,
-                                options = providerTileOptions(noWrap = TRUE, maxZoom = max.Zoom))
-    
-  })
+  map <- leaflet::leafletProxy(map = "map", data = filteredData())  
   if(input$idw == FALSE){
     map <- map %>% 
       leaflet::addCircles(lng=~Longitude, lat=~Latitude, radius = ~scales::rescale(abundance, to=c(1,10))*((max(Longitude+0.3) - min(Longitude-0.3))*1100), weight = 1, color = "darkred",

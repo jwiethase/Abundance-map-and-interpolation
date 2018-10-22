@@ -59,6 +59,7 @@ ui <- shiny::bootstrapPage(tags$style(" #loadmessage {
                                                                      shiny::checkboxInput("idw", "Interpolation (idw)", FALSE),
                                                                      shiny::checkboxInput("labels", "Static labels", TRUE)
                                                                      ),
+                                                                     shiny::checkboxInput("cluster", "Clustered markers", TRUE),
                                                                      uiOutput("slider"),
                                                                      hr(),
                                                                      downloadButton('downloadData', 'Download')
@@ -243,7 +244,11 @@ shiny::observe({
       leaflet::fitBounds(~min(Longitude+.2), ~min(Latitude-.2), ~max(Longitude+.2), ~max(Latitude+.2))
     })
   }
-  observeEvent(input$labels,{
+  observeEvent({
+    input$labels
+    input$cluster
+    }, {
+    if(input$cluster == TRUE){
     map <- map %>% 
       clearMarkers() %>% 
       clearControls() %>% 
@@ -253,6 +258,18 @@ shiny::observe({
                           labelOptions = labelOptions(noHide = input$labels),
                           popup = paste("Latitude:", sites$Latitude, "<br>",
                                         "Longitude:", sites$Longitude))
+    } else {
+      map <- map %>% 
+        clearMarkers() %>% 
+        clearControls() %>% 
+        clearMarkerClusters() %>% 
+        leaflet::addMarkers(data= sites,lng=~Longitude, lat=~Latitude, label = ~as.character(Site),
+                            labelOptions = labelOptions(noHide = input$labels),
+                            popup = paste("Latitude:", sites$Latitude, "<br>",
+                                          "Longitude:", sites$Longitude))
+      
+      
+    }
   })
 })
 

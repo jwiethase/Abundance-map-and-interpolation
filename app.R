@@ -33,7 +33,7 @@ ui <- shiny::bootstrapPage(tags$style(" #loadmessage {
                            shinyjs::useShinyjs(), # Use for toggling slide input
                            
                            # Add a side panel for inputs
-                           shiny::absolutePanel(top = 20, right = 20, width = 350,
+                           shiny::absolutePanel(top = 20, right = 20, width = 330,
                                                 draggable = FALSE,
                                                 shiny::wellPanel(div(class="test_type",
                                                                      id = "tPanel",style = "overflow-y:scroll; max-height: 1000px; opacity: 1",
@@ -67,7 +67,7 @@ ui <- shiny::bootstrapPage(tags$style(" #loadmessage {
 # Make the server functions
 server <- function(input, output, session) {
   options(shiny.maxRequestSize=100*1024^2) 
-  output$MAPID_click <- 
+  
   data <- reactive({
     req(input$dataset)
     data <- fread(input$dataset$datapath) 
@@ -167,6 +167,7 @@ shiny::observe({
   map <- leaflet::leafletProxy(map = "map", data = filteredData())  
   if(input$idw == FALSE){
     map <- map %>% 
+      clearImages() %>% 
       leaflet::addCircles(lng=~Longitude, lat=~Latitude, radius = ~scales::rescale(abundance, to=c(1,10))*((max(Longitude+0.3) - min(Longitude-0.3))*1100), weight = 1, color = "darkred",
                           fillOpacity = 0.7, label = ~paste('Samples: ', abundance, sep='')) %>%  
       leaflet::fitBounds(~min(Longitude+.5), ~min(Latitude-.5), ~max(Longitude+.5), ~max(Latitude+.5))
@@ -221,6 +222,7 @@ shiny::observe({
     
     map <- map %>% 
       clearImages() %>% 
+      clearShapes() %>% 
       leaflet::addRasterImage(r, colors = pal, opacity = 0.8) %>%
       clearControls() %>% 
       addLegend(pal = pal, values = values(r),

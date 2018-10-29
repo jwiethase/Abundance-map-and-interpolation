@@ -9,6 +9,7 @@ library(sp)
 library(rgdal)
 library(data.table)
 library(shinyjs)
+library(shinyBS)
 
 # Make the user interface
 ui <- shiny::bootstrapPage(tags$style(" #loadmessage {
@@ -34,8 +35,11 @@ ui <- shiny::bootstrapPage(tags$style(" #loadmessage {
                            
                            # Add a side panel for inputs
                            shiny::absolutePanel(top = 20, right = 20, width = 330,
+                                                div(style = "display:inline-block;width:100%;text-align: right;",
+                                                    bsButton("showpanel", " ", type = "toggle", value = TRUE, icon = icon("angle-double-down", lib = "font-awesome"))),
                                                 draggable = FALSE,
-                                                shiny::wellPanel(div(class="test_type",
+                                                shiny::wellPanel(id = "Sidebar",
+                                                                 div(class="test_type",
                                                                      id = "tPanel",style = "overflow-y:scroll; max-height: 1000px; opacity: 1",
                                                                      uiOutput("out"),
                                                                      shiny::fileInput(inputId = 'dataset', 
@@ -67,6 +71,20 @@ ui <- shiny::bootstrapPage(tags$style(" #loadmessage {
 # Make the server functions
 server <- function(input, output, session) {
   options(shiny.maxRequestSize=100*1024^2) 
+  observeEvent(input$showpanel, {
+    
+    if(input$showpanel == TRUE) {
+      removeCssClass("Main", "col-sm-12")
+      addCssClass("Main", "col-sm-8")
+      shinyjs::show(id = "Sidebar")
+      shinyjs::enable(id = "Sidebar")
+    }
+    else {
+      removeCssClass("Main", "col-sm-8")
+      addCssClass("Main", "col-sm-12")
+      shinyjs::hide(id = "Sidebar")
+    }
+  })
   
   data <- reactive({
     req(input$dataset)

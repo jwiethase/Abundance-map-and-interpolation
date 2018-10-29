@@ -10,6 +10,7 @@ library(rgdal)
 library(data.table)
 library(shinyjs)
 library(shinyBS)
+library(DT)
 
 # Make the user interface
 ui <- shiny::bootstrapPage(tags$style(" #loadmessage {
@@ -58,14 +59,32 @@ ui <- shiny::bootstrapPage(tags$style(" #loadmessage {
                                                                      hr(),
                                                                      splitLayout(
                                                                        shiny::checkboxInput("idw", "Interpolation (idw)", FALSE),
-                                                                       shiny::checkboxInput("labels", "Static labels", TRUE)
+                                                                       shiny::checkboxInput("circles", "Circle markers", TRUE)
                                                                      ),
-                                                                     shiny::checkboxInput("cluster", "Clustered markers", TRUE),
+                                                                     splitLayout(
+                                                                       shiny::checkboxInput("cluster", "Clustered markers", FALSE),
+                                                                       shiny::checkboxInput("labels", "Static labels", TRUE)
+                                                                       ),
                                                                      uiOutput("slider"),
                                                                      hr(),
                                                                      downloadButton('downloadData', 'Download')
                                                 ))
+                           ),
+                           shinyjs::hidden(
+                             div(
+                               id = "cp1",
+                               conditionalPanel("input.map_marker_click",
+                                                absolutePanel(top = 50, bottom = 50, right = 50, left = 70, height = 1200, width = 1200, 
+                                                              div(style = "display:inline-block;width:100%;text-align: right;",
+                                                                  actionButton("close", "x")),
+                                                              wellPanel(id = "tablepanel",
+                                                                        DTOutput("clickInfo"),
+                                                                        style =  "overflow-y: scroll;overflow-x: scroll")
+                                                              )
+                                                )
+                               )
                            )
+            
 )
 
 # Make the server functions
@@ -86,6 +105,14 @@ server <- function(input, output, session) {
     }
   })
   
+  observeEvent(input$map_marker_click,{
+    shinyjs::show("cp1")
+  })
+  observeEvent(input$close,{
+    shinyjs::hide("cp1")
+  })
+  
+
   data <- reactive({
     req(input$dataset)
     data <- fread(input$dataset$datapath) 
@@ -127,8 +154,6 @@ server <- function(input, output, session) {
   })
   
   # Modify the checkbox options for year dependand on the subsetted dataframe
-
-  
   observeEvent(input$species.choices, {
     if("Date" %in% names(data())){
     output$checkbox <- renderUI({
@@ -141,8 +166,7 @@ server <- function(input, output, session) {
     })
     }
   })
-
-
+  
   # Filter the initial dataframe by species and year chosen
   filteredData <- shiny::reactive({
     data <- data()
@@ -194,15 +218,19 @@ server <- function(input, output, session) {
     sites <- data %>% dplyr::select(Longitude, Latitude, Site) %>% unique()
     
     map <- leaflet::leafletProxy(map = "map", data = filteredData())  
-    if(input$idw == FALSE){
+    if(input$circles == TRUE){
       map <- map %>% 
         clearImages() %>% 
         clearShapes() %>% 
         leaflet::addCircles(lng=~Longitude, lat=~Latitude, radius = ~scales::rescale(abundance, to=c(1,10))*((max(Longitude+0.3) - min(Longitude-0.3))*1100), weight = 1, color = "darkred",
                             fillOpacity = 0.7, label = ~paste('Samples: ', abundance, sep='')) %>%  
         leaflet::fitBounds(~min(Longitude+.5), ~min(Latitude-.5), ~max(Longitude+.5), ~max(Latitude+.5))
-      
     } else {
+      map <- map %>% 
+        clearShapes()
+    }
+    
+    if(input$idw == TRUE){ 
       
       output$slider <- renderUI({
         sliderInput("Slider", "Inverse Distance Weighting Power", min=0, max=5, value=2)
@@ -259,32 +287,29 @@ server <- function(input, output, session) {
                     title = "Abundance", position = "bottomleft") %>%  
           leaflet::fitBounds(~min(Longitude+.2), ~min(Latitude-.2), ~max(Longitude+.2), ~max(Latitude+.2))
       })
+    } else {
+      map <- map %>% 
+        clearImages()
     }
+    
     observeEvent({
       input$labels
       input$cluster
     }, {
+      map <- map %>% 
+        clearMarkers() %>% 
+        clearControls() %>% 
+        clearMarkerClusters() 
       if(input$cluster == TRUE){
-        map <- map %>% 
-          clearMarkers() %>% 
-          clearControls() %>% 
-          clearMarkerClusters() %>% 
+        mapm <- map %>% 
           leaflet::addMarkers(data= sites,lng=~Longitude, lat=~Latitude, label = ~as.character(Site),
                               clusterOptions = markerClusterOptions(),
-                              labelOptions = labelOptions(noHide = input$labels),
-                              popup = paste("Latitude:", sites$Latitude, "<br>",
-                                            "Longitude:", sites$Longitude))
+                              labelOptions = labelOptions(noHide = input$labels)) 
       } else {
         map <- map %>% 
-          clearMarkers() %>% 
-          clearControls() %>% 
-          clearMarkerClusters() %>% 
           leaflet::addMarkers(data= sites,lng=~Longitude, lat=~Latitude, label = ~as.character(Site),
                               labelOptions = labelOptions(noHide = input$labels),
-                              popup = paste("Latitude:", sites$Latitude, "<br>",
-                                            "Longitude:", sites$Longitude))
-        
-        
+                              layerId = ~Site)
       }
     })
   })
@@ -297,6 +322,16 @@ server <- function(input, output, session) {
     })
     str(input$map_click)
   })
+  
+  observeEvent(input$map_marker_click, {
+    data <- data()
+    click <- input$map_marker_click
+    data <- data %>% filter(Site == click$id,
+                            grepl(Spec.choice(), Species, ignore.case = TRUE) == TRUE)
+    output$clickInfo <- renderDT(data)
+
+    
+  }) 
   
   # Download the filtered dataframe
   output$downloadData <- downloadHandler(

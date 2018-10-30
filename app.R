@@ -47,7 +47,7 @@ ui <- shiny::bootstrapPage(tags$style(" #loadmessage {
                                                                                       label = h5('Choose .csv file to upload'),
                                                                                       accept = c('.csv')),
                                                                      shiny::helpText("Warning: Dataset has to include all of the following column names:"),
-                                                                     shiny::helpText("'Species' (Format: Common OR scientific)"),
+                                                                     shiny::helpText("'Species'"),
                                                                      shiny::helpText("'Site'"),
                                                                      shiny::helpText("'Latitude' (Format: decimal)"),
                                                                      shiny::helpText("'Longitude' (Format: decimal)"),
@@ -73,13 +73,13 @@ ui <- shiny::bootstrapPage(tags$style(" #loadmessage {
                            shinyjs::hidden(
                              div(
                                id = "cp1",
-                               conditionalPanel("input.map_marker_click",
+                               conditionalPanel("input.map_shape_click",
                                                 absolutePanel(top = 50, bottom = 50, right = 50, left = 70, height = 1200, width = 1200, 
                                                               div(style = "display:inline-block;width:100%;text-align: right;",
                                                                   actionButton("close", "x")),
                                                               wellPanel(id = "tablepanel",
                                                                         DTOutput("clickInfo"),
-                                                                        style =  "overflow-y: scroll;overflow-x: scroll")
+                                                                        style =  "overflow-y: scroll;overflow-x: scroll"), draggable = TRUE
                                                               )
                                                 )
                                )
@@ -105,7 +105,7 @@ server <- function(input, output, session) {
     }
   })
   
-  observeEvent(input$map_marker_click,{
+  observeEvent(input$map_shape_click,{
     shinyjs::show("cp1")
   })
   observeEvent(input$close,{
@@ -229,7 +229,8 @@ server <- function(input, output, session) {
                               color = "black",
                               opacity = 1.0,
                               bringToFront = TRUE,
-                              sendToBack = TRUE)) %>%  
+                              sendToBack = TRUE),
+                            layerId = ~Site) %>%  
         leaflet::fitBounds(~min(Longitude+.5), ~min(Latitude-.5), ~max(Longitude+.5), ~max(Latitude+.5))
     } else {
       map <- map %>% 
@@ -310,7 +311,8 @@ server <- function(input, output, session) {
         mapm <- map %>% 
           leaflet::addMarkers(data= sites,lng=~Longitude, lat=~Latitude, label = ~as.character(Site),
                               clusterOptions = markerClusterOptions(),
-                              labelOptions = labelOptions(noHide = input$labels)) 
+                              labelOptions = labelOptions(noHide = input$labels),
+                              layerId = ~Site) 
       } else {
         map <- map %>% 
           leaflet::addMarkers(data= sites,lng=~Longitude, lat=~Latitude, label = ~as.character(Site),
@@ -329,9 +331,9 @@ server <- function(input, output, session) {
     str(input$map_click)
   })
   
-  observeEvent(input$map_marker_click, {
+  observeEvent(input$map_shape_click, {
     data <- data()
-    click <- input$map_marker_click
+    click <- input$map_shape_click
     data <- data %>% filter(Site == click$id,
                             grepl(Spec.choice(), Species, ignore.case = TRUE) == TRUE)
     output$clickInfo <- renderDT(data)

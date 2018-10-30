@@ -41,7 +41,7 @@ ui <- shiny::bootstrapPage(tags$style(" #loadmessage {
                                                 draggable = FALSE,
                                                 shiny::wellPanel(id = "Sidebar",
                                                                  div(class="test_type",
-                                                                     id = "tPanel",style = "overflow-y:scroll; max-height: 1000px; opacity: 1",
+                                                                     id = "tPanel",style = "overflow-y:scroll;overflow-x: hidden; max-height: 800px; max-width: 330px;opacity: 1",
                                                                      uiOutput("out"),
                                                                      shiny::fileInput(inputId = 'dataset', 
                                                                                       label = h5('Choose .csv file to upload'),
@@ -75,11 +75,11 @@ ui <- shiny::bootstrapPage(tags$style(" #loadmessage {
                              div(
                                id = "cp1",
                                conditionalPanel("input.map_shape_click",
-                                                absolutePanel(top = 50, bottom = 50, right = 50, left = 70, height = 600, width = 1200, 
+                                                absolutePanel(top = 50, bottom = 50, right = 50, left = 70, height = 500, width = 1200, 
                                                               div(style = "display:inline-block;width:100%;text-align: right;",
                                                                   actionButton("close", "x")),
                                                               wellPanel(div(id = "tablepanel",
-                                                                            style =  "overflow-y: scroll;overflow-x: scroll; max-height: 600px",
+                                                                            style =  "overflow-y: scroll;overflow-x: scroll; max-height: 500px; max-width: 1200px",
                                                                             DTOutput("clickInfo")
                                                                             )
                                                                         ), draggable = TRUE
@@ -367,7 +367,7 @@ server <- function(input, output, session) {
     click <- input$map_shape_click
     data <- data %>% filter(Site == click$id,
                             grepl(Spec.choice(), Species, ignore.case = TRUE) == TRUE)
-    output$clickInfo <- renderDT({data}, options = list(scrollX = TRUE, paging = FALSE))
+    output$clickInfo <- renderDT({data}, options = list(scrollX = FALSE, paging = FALSE))
   }) 
 
   # Download the filtered dataframe

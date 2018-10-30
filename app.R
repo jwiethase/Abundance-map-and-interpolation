@@ -59,12 +59,13 @@ ui <- shiny::bootstrapPage(tags$style(" #loadmessage {
                                                                      hr(),
                                                                      splitLayout(
                                                                        shiny::checkboxInput("idw", "Interpolation (idw)", FALSE),
-                                                                       shiny::checkboxInput("circles", "Circle markers", TRUE)
+                                                                       shiny::checkboxInput("circles", "Circle markers", FALSE)
                                                                      ),
                                                                      splitLayout(
                                                                        shiny::checkboxInput("cluster", "Clustered markers", FALSE),
                                                                        shiny::checkboxInput("labels", "Static labels", TRUE)
                                                                        ),
+                                                                     uiOutput("sliderCircle"),
                                                                      uiOutput("slider"),
                                                                      hr(),
                                                                      downloadButton('downloadData', 'Download')
@@ -217,6 +218,9 @@ server <- function(input, output, session) {
   observeEvent(input$idw == TRUE,{
     toggle("slider")
   })
+  observeEvent(input$circles == TRUE,{
+    toggle("sliderCircle")
+  })
   # Update above leaflet map depending on user inputs
   
   shiny::observe({
@@ -225,10 +229,17 @@ server <- function(input, output, session) {
     
     map <- leaflet::leafletProxy(map = "map", data = filteredData())  
     if(input$circles == TRUE){
+      map <- map  %>%  
+        leaflet::fitBounds(~min(Longitude+.5), ~min(Latitude-.5), ~max(Longitude+.5), ~max(Latitude+.5))
+      
+      output$sliderCircle <- renderUI({
+        sliderInput("circleSlider", "Circle size", min=100, max=3000, step = 100, value=1100)
+      })
+      observeEvent(input$circleSlider, {
       map <- map %>% 
         clearImages() %>% 
         clearShapes() %>% 
-        leaflet::addCircles(lng=~Longitude, lat=~Latitude, radius = ~scales::rescale(abundance, to=c(1,10))*((max(Longitude+0.3) - min(Longitude-0.3))*1100), weight = 1, color = "darkred",
+        leaflet::addCircles(lng=~Longitude, lat=~Latitude, radius = ~scales::rescale(abundance, to=c(1,10))*((max(Longitude+0.3) - min(Longitude-0.3))*input$circleSlider), weight = 1, color = "darkred",
                             fillOpacity = 0.7, label = ~paste('Samples: ', abundance, sep=''),
                             highlight = highlightOptions(
                               weight = 3,
@@ -236,14 +247,16 @@ server <- function(input, output, session) {
                               opacity = 1.0,
                               bringToFront = TRUE,
                               sendToBack = TRUE),
-                            layerId = ~Site) %>%  
-        leaflet::fitBounds(~min(Longitude+.5), ~min(Latitude-.5), ~max(Longitude+.5), ~max(Latitude+.5))
+                            layerId = ~Site)
+      })
     } else {
       map <- map %>% 
         clearShapes()
     }
     
     if(input$idw == TRUE){ 
+      map <- map  %>%  
+        leaflet::fitBounds(~min(Longitude+.2), ~min(Latitude-.2), ~max(Longitude+.2), ~max(Latitude+.2))
       
       output$slider <- renderUI({
         sliderInput("Slider", "Inverse Distance Weighting Power", min=0, max=5, value=2)
@@ -297,8 +310,7 @@ server <- function(input, output, session) {
           leaflet::addRasterImage(r, colors = pal, opacity = 0.8) %>%
           clearControls() %>% 
           addLegend(pal = pal, values = values(r),
-                    title = "Abundance", position = "bottomleft") %>%  
-          leaflet::fitBounds(~min(Longitude+.2), ~min(Latitude-.2), ~max(Longitude+.2), ~max(Latitude+.2))
+                    title = "Abundance", position = "bottomleft")
       })
     } else {
       map <- map %>% 

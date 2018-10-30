@@ -78,8 +78,11 @@ ui <- shiny::bootstrapPage(tags$style(" #loadmessage {
                                                 absolutePanel(top = 50, bottom = 50, right = 50, left = 70, height = 600, width = 1200, 
                                                               div(style = "display:inline-block;width:100%;text-align: right;",
                                                                   actionButton("close", "x")),
-                                                              wellPanel(id = "tablepanel",
-                                                                        DTOutput("clickInfo")), style =  "overflow-y: scroll;overflow-x: scroll", draggable = TRUE
+                                                              wellPanel(div(id = "tablepanel",
+                                                                            style =  "overflow-y: scroll;overflow-x: scroll; max-height: 600px",
+                                                                            DTOutput("clickInfo")
+                                                                            )
+                                                                        ), draggable = TRUE
                                                               )
                                                 )
                                )

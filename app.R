@@ -75,12 +75,11 @@ ui <- shiny::bootstrapPage(tags$style(" #loadmessage {
                              div(
                                id = "cp1",
                                conditionalPanel("input.map_shape_click",
-                                                absolutePanel(top = 50, bottom = 50, right = 50, left = 70, height = 1200, width = 1200, 
+                                                absolutePanel(top = 50, bottom = 50, right = 50, left = 70, height = 600, width = 1200, 
                                                               div(style = "display:inline-block;width:100%;text-align: right;",
                                                                   actionButton("close", "x")),
                                                               wellPanel(id = "tablepanel",
-                                                                        DTOutput("clickInfo"),
-                                                                        style =  "overflow-y: scroll;overflow-x: scroll"), draggable = TRUE
+                                                                        DTOutput("clickInfo")), style =  "overflow-y: scroll;overflow-x: scroll", draggable = TRUE
                                                               )
                                                 )
                                )
@@ -351,10 +350,13 @@ server <- function(input, output, session) {
   
   observeEvent(input$map_click, {
     click <- input$map_click
-
     leafletProxy('map') %>%
       removeMarker(layerId = click$id) %>% 
-      addMarkers(data = click, lng=~lng, lat=~lat, layerId = ~id)
+      addMarkers(data = click, lng=~lng, lat=~lat, layerId = ~id,
+                 icon = makeAwesomeIcon(icon = "home", library = "glyphicon",
+                                        markerColor = "red", iconColor = "white", spin = FALSE,
+                                        extraClasses = NULL, squareMarker = FALSE, iconRotate = 0,
+                                        fontFamily = "monospace", text = NULL) )
   })
     
   observeEvent(input$map_shape_click, {
@@ -362,11 +364,9 @@ server <- function(input, output, session) {
     click <- input$map_shape_click
     data <- data %>% filter(Site == click$id,
                             grepl(Spec.choice(), Species, ignore.case = TRUE) == TRUE)
-    output$clickInfo <- renderDT(data)
-
-    
+    output$clickInfo <- renderDT({data}, options = list(scrollX = TRUE, paging = FALSE))
   }) 
-  
+
   # Download the filtered dataframe
   output$downloadData <- downloadHandler(
     filename = function() { 

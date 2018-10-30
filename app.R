@@ -233,7 +233,7 @@ server <- function(input, output, session) {
         leaflet::fitBounds(~min(Longitude+.5), ~min(Latitude-.5), ~max(Longitude+.5), ~max(Latitude+.5))
       
       output$sliderCircle <- renderUI({
-        sliderInput("circleSlider", "Circle size", min=100, max=3000, step = 100, value=1100)
+        sliderInput("circleSlider", "Circle size", min=10, max=2000, step = 10, value=1100)
       })
       observeEvent(input$circleSlider, {
       map <- map %>% 
@@ -326,7 +326,7 @@ server <- function(input, output, session) {
         clearControls() %>% 
         clearMarkerClusters() 
       if(input$cluster == TRUE){
-        mapm <- map %>% 
+        map <- map %>% 
           leaflet::addMarkers(data= sites,lng=~Longitude, lat=~Latitude, label = ~as.character(Site),
                               clusterOptions = markerClusterOptions(),
                               labelOptions = labelOptions(noHide = input$labels),
@@ -340,15 +340,23 @@ server <- function(input, output, session) {
     })
   })
   
+  
   output$out <- renderPrint({
     validate(need(input$map_click, FALSE))
     output$out <- renderUI({
       df <- input$map_click
       textInput("Coords", "Clicked coordinates:", value = paste(round(df[[1]], digits= 4), ", ", round(df[[2]], digits= 4), sep = ""))
     })
-    str(input$map_click)
   })
   
+  observeEvent(input$map_click, {
+    click <- input$map_click
+
+    leafletProxy('map') %>%
+      removeMarker(layerId = click$id) %>% 
+      addMarkers(data = click, lng=~lng, lat=~lat, layerId = ~id)
+  })
+    
   observeEvent(input$map_shape_click, {
     data <- data()
     click <- input$map_shape_click

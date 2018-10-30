@@ -48,9 +48,9 @@ ui <- shiny::bootstrapPage(tags$style(" #loadmessage {
                                                                                       accept = c('.csv')),
                                                                      shiny::helpText("Warning: Dataset has to include all of the following column names:"),
                                                                      shiny::helpText("'Species'"),
-                                                                     shiny::helpText("'Site'"),
                                                                      shiny::helpText("'Latitude' (Format: decimal)"),
                                                                      shiny::helpText("'Longitude' (Format: decimal)"),
+                                                                     shiny::helpText("OPTIONAL 'Site'"),
                                                                      shiny::helpText("OPTIONAL 'Date' (Format: dmy)"),
                                                                      shiny::selectInput(inputId = "species.choices", 
                                                                                         label = h5("Species"),
@@ -116,7 +116,7 @@ server <- function(input, output, session) {
   data <- reactive({
     req(input$dataset)
     data <- fread(input$dataset$datapath) 
-    req.names <- c("Site", "Species", "Latitude", "Longitude")
+    req.names <- c("Species", "Latitude", "Longitude")
     validate(
       need(all(req.names %in% colnames(data), TRUE) == TRUE,
            message = paste("\nError: Missing or miss-spelled column names.\nUnmatched columns:\n\n", paste(c(req.names[req.names %in% colnames(data) == FALSE]), collapse="\n"), sep="")
@@ -125,6 +125,12 @@ server <- function(input, output, session) {
     data <- data %>%
       mutate(Latitude = as.numeric(as.character(Latitude)),
              Longitude = as.numeric(as.character(Longitude)))
+    
+    if("Site" %in% names(data) == FALSE){
+    data$Site <- data %>%
+        group_by(Latitude, Longitude) %>% 
+        group_indices()
+    }
     
     if("Date" %in% names(data)){
       data <- data %>%

@@ -82,7 +82,7 @@ ui <- shiny::bootstrapPage(tags$style(" #loadmessage {
                                                                   actionButton("close", "x")),
                                                               wellPanel(div(id = "tablepanel",
                                                                             style =  "overflow-y: scroll;overflow-x: scroll; max-height: 500px; max-width: 1200px",
-                                                                            DTOutput("clickInfo")
+                                                                            dataTableOutput("clickInfo")
                                                                             )
                                                                         ), draggable = TRUE
                                                               )
@@ -217,7 +217,9 @@ server <- function(input, output, session) {
         baseGroups = c('Esri.WorldImagery', 'Esri.WorldTopoMap', 'OpenMapSurfer.Roads', 'Esri.DeLorme', 'OpenTopoMap', "OpenStreetMap.Mapnik"),
         options = layersControlOptions(collapsed = TRUE),
         position = "topleft"
-      ) 
+      ) %>% 
+      addMeasure(primaryLengthUnit="kilometers", secondaryLengthUnit="kilometers",
+                 position = "topleft")
 
     
   })
@@ -369,7 +371,7 @@ server <- function(input, output, session) {
     click <- input$map_shape_click
     data <- data %>% filter(Site == click$id,
                             grepl(Spec.choice(), Species, ignore.case = TRUE) == TRUE)
-    output$clickInfo <- renderDT({data}, options = list(scrollX = FALSE, paging = FALSE))
+    output$clickInfo <- DT::renderDataTable({data}, options = list(scrollX = FALSE, paging = FALSE))
   }) 
 
   # Download the filtered dataframe

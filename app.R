@@ -1,6 +1,7 @@
 rm(list = ls(all=TRUE))  
 library(shiny)
 library(leaflet)
+library(leaflet.extras)
 library(dplyr)
 library(scales)
 library (lubridate)
@@ -35,13 +36,14 @@ ui <- shiny::bootstrapPage(tags$style(" #loadmessage {
                            shinyjs::useShinyjs(), # Use for toggling slide input
                            
                            # Add a side panel for inputs
-                           shiny::absolutePanel(top = 20, right = 20, width = 330,
+                           shiny::absolutePanel(top = 20, right = 20, width = 330, 
                                                 div(style = "display:inline-block;width:100%;text-align: right;",
                                                     bsButton("showpanel", " ", type = "toggle", value = TRUE, icon = icon("angle-double-down", lib = "font-awesome"))),
                                                 draggable = FALSE,
                                                 shiny::wellPanel(id = "Sidebar",
                                                                  div(class="test_type",
-                                                                     id = "tPanel",style = "overflow-y:scroll;overflow-x: hidden; max-height: 800px; max-width: 330px;opacity: 1",
+                                                                     id = "tPanel",style = "overflow-y:scroll;overflow-x: hidden;
+                                                                     max-height: 800px; max-width: 330px;opacity: 1",
                                                                      uiOutput("out"),
                                                                      shiny::fileInput(inputId = 'dataset', 
                                                                                       label = h5('Choose .csv file to upload'),
@@ -200,21 +202,23 @@ server <- function(input, output, session) {
     data <- data()
     leaflet::leaflet(data) %>%  
       leaflet::fitBounds(~min(Longitude+.1), ~min(Latitude), ~max(Longitude+.1), ~max(Latitude)) %>%  
-      addProviderTiles(providers$Esri.WorldImagery, group = "Esri.WorldImagery",
-                       options = providerTileOptions(maxZoom = 17)) %>%
-      addProviderTiles(providers$Esri.WorldTopoMap, group = "Esri.WorldTopoMap",
-                       options = providerTileOptions(maxZoom = 16)) %>%
-      addProviderTiles(providers$OpenMapSurfer.Roads, group = "OpenMapSurfer.Roads",
-                       options = providerTileOptions(maxZoom = 13)) %>%
-      addProviderTiles(providers$Esri.DeLorme, group = "Esri.DeLorme",
-                       options = providerTileOptions(maxZoom = 11)) %>%
-      addProviderTiles(providers$OpenTopoMap, group = "OpenTopoMap",
-                       options = providerTileOptions(maxZoom = 12)) %>%
+      addProviderTiles(providers$Esri.WorldImagery, group = "Esri.WorldImagery") %>%
+      addProviderTiles(providers$Esri.WorldTopoMap, group = "Esri.WorldTopoMap") %>%
+      addProviderTiles(providers$OpenMapSurfer.Roads, group = "OpenMapSurfer.Roads") %>%
+      addProviderTiles(providers$Esri.DeLorme, group = "Esri.DeLorme") %>%
+      addProviderTiles(providers$OpenTopoMap, group = "OpenTopoMap") %>%
+      addProviderTiles(providers$OpenStreetMap.Mapnik, group = "OpenStreetMap.Mapnik") %>% 
+      addEasyButton(easyButton(
+        icon = "fa-globe", title = "Zoom to Level 1",
+        onClick = JS("function(btn, map){ map.setZoom(1);}"))) %>% 
+      leaflet.extras::addSearchOSM() %>% 
+      leaflet.extras::addFullscreenControl() %>%
       addLayersControl(
-        baseGroups = c('Esri.WorldImagery', 'Esri.WorldTopoMap', 'OpenMapSurfer.Roads', 'Esri.DeLorme', 'OpenTopoMap'),
+        baseGroups = c('Esri.WorldImagery', 'Esri.WorldTopoMap', 'OpenMapSurfer.Roads', 'Esri.DeLorme', 'OpenTopoMap', "OpenStreetMap.Mapnik"),
         options = layersControlOptions(collapsed = TRUE),
         position = "topleft"
-      )
+      ) 
+
     
   })
   observeEvent(input$idw == TRUE,{
@@ -310,9 +314,7 @@ server <- function(input, output, session) {
           clearImages() %>% 
           clearShapes() %>% 
           leaflet::addRasterImage(r, colors = pal, opacity = 0.8) %>%
-          clearControls() %>% 
-          addLegend(pal = pal, values = values(r),
-                    title = "Abundance", position = "bottomleft")
+          clearControls() 
       })
     } else {
       map <- map %>% 

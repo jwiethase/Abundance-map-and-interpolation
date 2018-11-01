@@ -199,9 +199,7 @@ server <- function(input, output, session) {
   
   # Make a leaflet map that won't change with the user's input
   output$map <- leaflet::renderLeaflet({
-    data <- data()
-    leaflet::leaflet(data) %>%  
-      leaflet::fitBounds(~min(Longitude+.1), ~min(Latitude), ~max(Longitude+.1), ~max(Latitude)) %>%  
+    leaflet::leaflet() %>%  
       addProviderTiles(providers$Esri.WorldImagery, group = "Esri.WorldImagery") %>%
       addProviderTiles(providers$Esri.WorldTopoMap, group = "Esri.WorldTopoMap") %>%
       addProviderTiles(providers$OpenMapSurfer.Roads, group = "OpenMapSurfer.Roads") %>%
@@ -220,8 +218,6 @@ server <- function(input, output, session) {
       ) %>% 
       addMeasure(primaryLengthUnit="kilometers", secondaryLengthUnit="kilometers",
                  position = "topleft")
-
-    
   })
   observeEvent(input$idw == TRUE,{
     toggle("slider")
@@ -235,7 +231,9 @@ server <- function(input, output, session) {
     data <- data()
     sites <- data %>% dplyr::select(Longitude, Latitude, Site) %>% unique()
     
-    map <- leaflet::leafletProxy(map = "map", data = filteredData())  
+    map <- leaflet::leafletProxy(map = "map", data = filteredData())  %>% 
+      leaflet::fitBounds(~min(Longitude+.5), ~min(Latitude-.5), ~max(Longitude+.5), ~max(Latitude+.5))
+    
     if(input$circles == TRUE){
       map <- map  %>%  
         leaflet::fitBounds(~min(Longitude+.5), ~min(Latitude-.5), ~max(Longitude+.5), ~max(Latitude+.5))

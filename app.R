@@ -36,14 +36,14 @@ ui <- shiny::bootstrapPage(tags$style(" #loadmessage {
                            shinyjs::useShinyjs(), # Use for toggling slide input
                            
                            # Add a side panel for inputs
-                           shiny::absolutePanel(top = 20, right = 20, width = 330, 
+                           shiny::absolutePanel(top = 20, right = 20, width = "20%", height = "80%",
                                                 div(style = "display:inline-block;width:100%;text-align: right;",
                                                     bsButton("showpanel", " ", type = "toggle", value = TRUE, icon = icon("angle-double-down", lib = "font-awesome"))),
                                                 draggable = FALSE,
                                                 shiny::wellPanel(id = "Sidebar",
                                                                  div(class="test_type",
                                                                      id = "tPanel",style = "overflow-y:scroll;overflow-x: hidden;
-                                                                     max-height: 800px; max-width: 330px;opacity: 1",
+                                                                     max-height: 80%;opacity: 1",
                                                                      uiOutput("out"),
                                                                      shiny::fileInput(inputId = 'dataset', 
                                                                                       label = h5('Choose .csv file to upload'),
@@ -217,7 +217,8 @@ server <- function(input, output, session) {
         position = "topleft"
       ) %>% 
       addMeasure(primaryLengthUnit="kilometers", secondaryLengthUnit="kilometers",
-                 position = "topleft")
+                 position = "topleft") %>% 
+      addScaleBar(position = c("bottomleft"))
   })
   observeEvent(input$idw == TRUE,{
     toggle("slider")

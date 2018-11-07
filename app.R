@@ -170,7 +170,7 @@ server <- function(input, output, session) {
     gsub("[[:space:]]\\(.*$", "", input$species.choices)
   })
   
-  # Modify the checkbox options for year dependand on the subsetted dataframe
+  # Render the year input fields, if column 'Date' exists
   observeEvent(input$species.choices, {
     if("Date" %in% names(data())){
       data <- data()

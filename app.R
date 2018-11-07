@@ -27,7 +27,8 @@ ui <- shiny::bootstrapPage(tags$style(" #loadmessage {
                                       background-color: #ffffff;
                                       z-index: 105;}",
                                       ".test_type {font-size: 12px}",
-                                      type = "text/css", "html, body {width:100%;height:100%}"),
+                                      type = "text/css", "html, body {width:100%;height:100%}",
+                                      ".selectize-input { font-size: 10px; line-height: 10px;} .selectize-dropdown { font-size: 12px; line-height: 12px; }"),
                            conditionalPanel(condition="$('html').hasClass('shiny-busy')",
                                             tags$div("Loading...",id="loadmessage")),
                            # Make map span the whole area
@@ -36,28 +37,33 @@ ui <- shiny::bootstrapPage(tags$style(" #loadmessage {
                            shinyjs::useShinyjs(), # Use for toggling slide input
                            
                            # Add a side panel for inputs
-                           shiny::absolutePanel(top = 20, right = 20, width = "20%", height = "80%",
-                                                div(style = "display:inline-block;width:100%;text-align: right;",
+                           shiny::absolutePanel(top = "1%", right = "1%", width = "22%", height = "80%",
+                                                div(style = "display:inline-block;width:100%;text-align: right",
                                                     bsButton("showpanel", " ", type = "toggle", value = TRUE, icon = icon("angle-double-down", lib = "font-awesome"))),
                                                 draggable = FALSE,
                                                 shiny::wellPanel(id = "Sidebar",
                                                                  div(class="test_type",
-                                                                     id = "tPanel",style = "overflow-y:scroll;overflow-x: hidden;
-                                                                     max-height: 80%;opacity: 1",
-                                                                     uiOutput("out"),
+                                                                     id = "tPanel",style = "overflow-y:hidden;overflow-x: hidden;
+                                                                     max-height: 80%;opacity: 1;font-size:80%;",
+                                                                     shiny::actionButton("helptext", "?", style='padding:4px; font-size:80%;
+                                                                                          position: absolute;top: 60px;right: 40px;'),
                                                                      shiny::fileInput(inputId = 'dataset', 
                                                                                       label = h5('Choose .csv file to upload'),
                                                                                       accept = c('.csv')),
-                                                                     shiny::helpText("Warning: Dataset has to include all of the following column names:"),
-                                                                     shiny::helpText("'Species'"),
-                                                                     shiny::helpText("'Latitude' (Format: decimal)"),
-                                                                     shiny::helpText("'Longitude' (Format: decimal)"),
-                                                                     shiny::helpText("OPTIONAL 'Site'"),
-                                                                     shiny::helpText("OPTIONAL 'Date' (Format: dmy)"),
+                                                                     uiOutput("out"),
+                                                                     uiOutput("HelpBox1"),
+                                                                     uiOutput("HelpBox2"),
+                                                                     uiOutput("HelpBox3"),
+                                                                     uiOutput("HelpBox4"),
+                                                                     uiOutput("HelpBox5"),
+                                                                     uiOutput("HelpBox6"),
                                                                      shiny::selectInput(inputId = "species.choices", 
                                                                                         label = h5("Species"),
                                                                                         choices = ' '), 
-                                                                     uiOutput("checkbox"),
+                                                                     splitLayout(
+                                                                     uiOutput("year1"),
+                                                                     uiOutput("year2")
+                                                                     ),
                                                                      hr(),
                                                                      splitLayout(
                                                                        shiny::checkboxInput("idw", "Interpolation (idw)", FALSE),
@@ -77,7 +83,7 @@ ui <- shiny::bootstrapPage(tags$style(" #loadmessage {
                              div(
                                id = "cp1",
                                conditionalPanel("input.map_shape_click",
-                                                absolutePanel(top = 50, bottom = 50, right = 50, left = 70, height = 500, width = 1200, 
+                                                absolutePanel(top = "5%", bottom = "10%", right = "20%", left = "5%", height = "40%", width = "64%", 
                                                               div(style = "display:inline-block;width:100%;text-align: right;",
                                                                   actionButton("close", "x")),
                                                               wellPanel(div(id = "tablepanel",
@@ -139,8 +145,8 @@ server <- function(input, output, session) {
     
     if("Date" %in% names(data)){
       data <- data %>%
-        mutate(Date = dmy(Date),
-               year = year(Date))
+        mutate(Date = lubridate::dmy(Date),
+               year = lubridate::year(Date))
     }
     # Check for non-numeric values in Latitude and Longitude column
     coordsDF <- data %>% dplyr::select(Latitude, Longitude) %>% mutate(Latitude = as.numeric(Latitude),
@@ -167,22 +173,66 @@ server <- function(input, output, session) {
   # Modify the checkbox options for year dependand on the subsetted dataframe
   observeEvent(input$species.choices, {
     if("Date" %in% names(data())){
-    output$checkbox <- renderUI({
       data <- data()
       choice <-  data.frame(year= unique(data[data$Species %in% Spec.choice(), "year"]))
-      choice$year <- choice$year[order(choice$year, decreasing = TRUE)]
-      checkboxGroupInput(inputId = "checkbox",
-                         label = h4("Year"),
-                         choices = choice$year, selected = choice$year)
+      
+    output$year1 <- renderUI({
+      textInput(inputId = "yearStart", 
+                label = "From:",
+                value = min(choice$year))
+    })
+      output$year2 <- renderUI({
+        textInput(inputId = "yearEnd", 
+                  label = "To:",
+                  value = max(choice$year))
     })
     }
   })
+  
+  output$HelpBox1 = renderUI({
+    if (input$helptext %% 2){
+      helpText("Warning: Dataset has to include all of the following column names:")
+    } else {
+      return()}
+  })
+  output$HelpBox2 = renderUI({
+    if (input$helptext %% 2){
+      helpText("'Species'")
+    } else {
+      return()}
+  })
+  output$HelpBox3 = renderUI({
+    if (input$helptext %% 2){
+      helpText("'Latitude' (Format: decimal)")
+    } else {
+      return()}
+  })
+  output$HelpBox4 = renderUI({
+    if (input$helptext %% 2){
+      helpText("'Longitude' (Format: decimal)")
+    } else {
+      return()}
+  })
+  output$HelpBox5 = renderUI({
+    if (input$helptext %% 2){
+      helpText("OPTIONAL 'Site'")
+    } else {
+      return()}
+  })
+  output$HelpBox6 = renderUI({
+    if (input$helptext %% 2){
+      helpText("OPTIONAL 'Date' (Format: dmy)")
+    } else {
+      return()}
+  })
+
   
   # Filter the initial dataframe by species and year chosen
   filteredData <- shiny::reactive({
     data <- data()
     if("Date" %in% names(data)){
-    data <- data[data$year %in% input$checkbox, ]
+    data <- data[as.numeric(data$year) >= as.numeric(input$yearStart) &
+                   as.numeric(data$year) <= as.numeric(input$yearEnd), ]
     }
     data %>% group_by(Species, Longitude, Latitude, Site) %>% 
       summarize(abundance= n()) %>% ungroup() %>% dplyr::filter(grepl(Spec.choice(), Species, ignore.case = TRUE) == TRUE)
@@ -192,8 +242,8 @@ server <- function(input, output, session) {
   DataDetailed <- shiny::reactive({
     data <- data()
     if("Date" %in% names(data)){
-    data <- data[data$year %in% input$checkbox, ]
-    }
+      data <- data[as.numeric(data$year) >= as.numeric(input$yearStart) &
+                     as.numeric(data$year) <= as.numeric(input$yearEnd), ]  }
     new_df <- data %>% dplyr::filter(grepl(Spec.choice(), Species, ignore.case = TRUE) == TRUE)
   })
   

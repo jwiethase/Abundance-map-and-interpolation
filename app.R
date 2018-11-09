@@ -69,7 +69,6 @@ ui <- shiny::bootstrapPage(tags$style(" #loadmessage {
                                                                      uiOutput("year1"),
                                                                      uiOutput("year2")
                                                                      ),
-                                                                     hr(),
                                                                      splitLayout(
                                                                        shiny::checkboxInput("idw", "Interpolation (idw)", FALSE),
                                                                        shiny::checkboxInput("circles", "Circle markers", FALSE)
@@ -428,13 +427,9 @@ server <- function(input, output, session) {
     click <- input$map_click
     leafletProxy('map') %>%
       removeMarker(layerId = click$id) %>% 
-      addMarkers(data = click, lng=~lng, lat=~lat, layerId = ~id,
-                 icon = makeAwesomeIcon(icon = "home", library = "glyphicon",
-                                        markerColor = "red", iconColor = "white", spin = FALSE,
-                                        extraClasses = NULL, squareMarker = FALSE, iconRotate = 0,
-                                        fontFamily = "monospace", text = NULL) )
+      leaflet::addCircleMarkers(data = click, lng=~lng, lat=~lat, layerId = ~id, radius = 2, opacity = 1,
+                                stroke = FALSE, color = "black")
   })
-    
   observeEvent(input$map_shape_click, {
     data <- data()
     click <- input$map_shape_click

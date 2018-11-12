@@ -27,16 +27,13 @@ ui <- shiny::bootstrapPage(tags$style(" #loadmessage {
                                       background-color: #ffffff;
                                       z-index: 105;}",
                                       ".test_type {font-size: 12px}",
-<<<<<<< HEAD
-                                      type = "text/css", "html, body {width:100%;height:100%}"),
-=======
                                       type = "text/css", "html, body {width:100%;height:100%}",
+                                      ".selectize-input { font-size: 12px; line-height: 12px;} .selectize-dropdown { font-size: 12px; line-height: 12px; }",
                                       HTML(".shiny-notification {
                                            position: fixed;
                                            top: calc(40%);;
                                            left: calc(30%);;
                                            }")),
->>>>>>> f25fa84031d7a0ed9a5163ae1342c767d412c897
                            conditionalPanel(condition="$('html').hasClass('shiny-busy')",
                                             tags$div("Loading...",id="loadmessage")),
                            # Make map span the whole area
@@ -54,7 +51,7 @@ ui <- shiny::bootstrapPage(tags$style(" #loadmessage {
                                                                      id = "tPanel",style = "overflow-y:hidden;overflow-x: hidden;
                                                                      max-height: 80%;opacity: 1;font-size:80%;",
                                                                      shiny::actionButton("helptext", "?", style='padding:4px; font-size:80%;
-                                                                                          position: absolute;top: 10.5%;right: 20%;'),
+                                                                                          position: absolute;top: 60px;right: 40px;'),
                                                                      shiny::fileInput(inputId = 'dataset', 
                                                                                       label = h5('Choose .csv file to upload'),
                                                                                       accept = c('.csv')),

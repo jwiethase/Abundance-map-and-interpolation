@@ -27,7 +27,17 @@ ui <- shiny::bootstrapPage(tags$style(" #loadmessage {
                                       background-color: #ffffff;
                                       z-index: 105;}",
                                       ".test_type {font-size: 12px}",
+<<<<<<< HEAD
                                       type = "text/css", "html, body {width:100%;height:100%}"),
+=======
+                                      type = "text/css", "html, body {width:100%;height:100%}",
+                                      ".selectize-input { font-size: 12px; line-height: 12px;} .selectize-dropdown { font-size: 12px; line-height: 12px; }",
+                                      HTML(".shiny-notification {
+                                           position: fixed;
+                                           top: calc(40%);;
+                                           left: calc(30%);;
+                                           }")),
+>>>>>>> f25fa84031d7a0ed9a5163ae1342c767d412c897
                            conditionalPanel(condition="$('html').hasClass('shiny-busy')",
                                             tags$div("Loading...",id="loadmessage")),
                            # Make map span the whole area
@@ -63,7 +73,6 @@ ui <- shiny::bootstrapPage(tags$style(" #loadmessage {
                                                                      uiOutput("year1"),
                                                                      uiOutput("year2")
                                                                      ),
-                                                                     hr(),
                                                                      splitLayout(
                                                                        shiny::checkboxInput("idw", "Interpolation (idw)", FALSE),
                                                                        shiny::checkboxInput("circles", "Circle markers", FALSE)
@@ -127,11 +136,17 @@ server <- function(input, output, session) {
     req(input$dataset)
     data <- fread(input$dataset$datapath) 
     req.names <- c("Species", "Latitude", "Longitude")
+    if(all(req.names %in% colnames(data), TRUE) == FALSE){
+      showNotification(paste("\nError: Missing or miss-spelled columns: ", paste(c(req.names[req.names %in% colnames(data) == FALSE]), collapse="\n"), sep=""),
+                       duration = NULL, type = "error"
+      )
     validate(
       need(all(req.names %in% colnames(data), TRUE) == TRUE,
-           message = paste("\nError: Missing or miss-spelled column names.\nUnmatched columns:\n\n", paste(c(req.names[req.names %in% colnames(data) == FALSE]), collapse="\n"), sep="")
+           message = FALSE
       )
     )
+   
+    }
     data <- data %>%
       mutate(Latitude = as.numeric(as.character(Latitude)),
              Longitude = as.numeric(as.character(Longitude)))
@@ -150,10 +165,14 @@ server <- function(input, output, session) {
     # Check for non-numeric values in Latitude and Longitude column
     coordsDF <- data %>% dplyr::select(Latitude, Longitude) %>% mutate(Latitude = as.numeric(Latitude),
                                                                        Longitude = as.numeric(Longitude))
-    
+    if(identical(colnames(coordsDF)[colSums(is.na(coordsDF)) > 0], character(0)) == FALSE){
+      showNotification( paste("\nError: Non-numeric value in column: ", paste(c(colnames(coordsDF)[colSums(is.na(coordsDF)) > 0]), collapse="\n"), sep=""),
+                       duration = NULL, type = "error"
+      )
+    }
     validate(
       need(identical(colnames(coordsDF)[colSums(is.na(coordsDF)) > 0], character(0)), TRUE,
-           message = paste("\nError: Non-numeric value in column: ", paste(c(colnames(coordsDF)[colSums(is.na(coordsDF)) > 0]), collapse="\n"), sep="")
+           message = FALSE
       )
     )
     remove(coordsDF)
@@ -319,6 +338,11 @@ server <- function(input, output, session) {
       })
       new_df <- filteredData() %>% dplyr::rename(lon = "Longitude",
                                                  lat = "Latitude")
+      if(length(rownames(new_df)) < 1){
+        showNotification("Not enough data for interpolation",
+                          duration = NULL, type = "error"
+        )
+      }
       validate(
         need(length(rownames(new_df)) > 1, "Not enough data")
       )
@@ -407,13 +431,9 @@ server <- function(input, output, session) {
     click <- input$map_click
     leafletProxy('map') %>%
       removeMarker(layerId = click$id) %>% 
-      addMarkers(data = click, lng=~lng, lat=~lat, layerId = ~id,
-                 icon = makeAwesomeIcon(icon = "home", library = "glyphicon",
-                                        markerColor = "red", iconColor = "white", spin = FALSE,
-                                        extraClasses = NULL, squareMarker = FALSE, iconRotate = 0,
-                                        fontFamily = "monospace", text = NULL) )
+      leaflet::addCircleMarkers(data = click, lng=~lng, lat=~lat, layerId = ~id, radius = 2, opacity = 1,
+                                stroke = FALSE, color = "black")
   })
-    
   observeEvent(input$map_shape_click, {
     data <- data()
     click <- input$map_shape_click

@@ -27,8 +27,7 @@ ui <- shiny::bootstrapPage(tags$style(" #loadmessage {
                                       background-color: #ffffff;
                                       z-index: 105;}",
                                       ".test_type {font-size: 12px}",
-                                      type = "text/css", "html, body {width:100%;height:100%}",
-                                      ".selectize-input { font-size: 10px; line-height: 10px;} .selectize-dropdown { font-size: 12px; line-height: 12px; }"),
+                                      type = "text/css", "html, body {width:100%;height:100%}"),
                            conditionalPanel(condition="$('html').hasClass('shiny-busy')",
                                             tags$div("Loading...",id="loadmessage")),
                            # Make map span the whole area

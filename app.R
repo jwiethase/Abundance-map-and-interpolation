@@ -264,15 +264,15 @@ server <- function(input, output, session) {
   # Make a leaflet map that won't change with the user's input
   output$map <- leaflet::renderLeaflet({
     leaflet::leaflet() %>%  
-      addProviderTiles(providers$Esri.WorldImagery, group = "Esri.WorldImagery") %>%
-      addProviderTiles(providers$Esri.WorldTopoMap, group = "Esri.WorldTopoMap") %>%
-      addProviderTiles(providers$OpenMapSurfer.Roads, group = "OpenMapSurfer.Roads") %>%
-      addProviderTiles(providers$Esri.DeLorme, group = "Esri.DeLorme") %>%
-      addProviderTiles(providers$OpenTopoMap, group = "OpenTopoMap") %>%
-      addProviderTiles(providers$OpenStreetMap.Mapnik, group = "OpenStreetMap.Mapnik") %>% 
+      addProviderTiles(providers$Esri.WorldImagery, group = "Esri.WorldImagery", options = providerTileOptions(minZoom = 2)) %>%
+      addProviderTiles(providers$Esri.WorldTopoMap, group = "Esri.WorldTopoMap", options = providerTileOptions(minZoom = 2)) %>%
+      addProviderTiles(providers$OpenMapSurfer.Roads, group = "OpenMapSurfer.Roads", options = providerTileOptions(minZoom = 2)) %>%
+      addProviderTiles(providers$Esri.DeLorme, group = "Esri.DeLorme", options = providerTileOptions(minZoom = 2)) %>%
+      addProviderTiles(providers$OpenTopoMap, group = "OpenTopoMap", options = providerTileOptions(minZoom = 2)) %>%
+      addProviderTiles(providers$OpenStreetMap.Mapnik, group = "OpenStreetMap.Mapnik", options = providerTileOptions(minZoom = 2)) %>% 
       addEasyButton(easyButton(
-        icon = "fa-globe", title = "Zoom to Level 1",
-        onClick = JS("function(btn, map){ map.setZoom(1);}"))) %>% 
+        icon = "fa-globe", title = "Zoom to Level 2",
+        onClick = JS("function(btn, map){ map.setZoom(2);}"))) %>% 
       leaflet.extras::addSearchOSM() %>% 
       leaflet.extras::addFullscreenControl() %>%
       addLayersControl(

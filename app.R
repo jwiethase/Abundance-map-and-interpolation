@@ -143,9 +143,6 @@ server <- function(input, output, session) {
     )
    
     }
-    data <- data %>%
-      mutate(Latitude = as.numeric(as.character(Latitude)),
-             Longitude = as.numeric(as.character(Longitude)))
     
     if("Site" %in% names(data) == FALSE){
     data$Site <- data %>%
@@ -162,8 +159,8 @@ server <- function(input, output, session) {
     coordsDF <- data %>% dplyr::select(Latitude, Longitude) %>% mutate(Latitude = as.numeric(Latitude),
                                                                        Longitude = as.numeric(Longitude))
     if(identical(colnames(coordsDF)[colSums(is.na(coordsDF)) > 0], character(0)) == FALSE){
-      showNotification( paste("\nError: Non-numeric value in column: ", paste(c(colnames(coordsDF)[colSums(is.na(coordsDF)) > 0]), collapse="\n"), sep=""),
-                       duration = NULL, type = "error"
+      showNotification( paste("\nWarning: Rows excluded due to non-numeric values in column: ", paste(c(colnames(coordsDF)[colSums(is.na(coordsDF)) > 0]), collapse="\n"), sep=""),
+                       duration = 5, type = "warning"
       )
     }
     validate(
@@ -172,6 +169,12 @@ server <- function(input, output, session) {
       )
     )
     remove(coordsDF)
+    
+    data <- data %>%
+      mutate(Latitude = as.numeric(as.character(Latitude)),
+             Longitude = as.numeric(as.character(Longitude))) %>% 
+      filter(!is.na(Latitude), !is.na(Longitude))
+    
     data
   })
   

@@ -64,7 +64,8 @@ ui <- shiny::bootstrapPage(tags$style(" #loadmessage {
                                                                      uiOutput("HelpBox6"),
                                                                      shiny::selectInput(inputId = "species.choices", 
                                                                                         label = h5("Species"),
-                                                                                        choices = ' '), 
+                                                                                        choices = ' ',
+                                                                                        multiple = TRUE), 
                                                                      splitLayout(
                                                                      uiOutput("year1"),
                                                                      uiOutput("year2")
@@ -163,11 +164,6 @@ server <- function(input, output, session) {
                        duration = 5, type = "warning"
       )
     }
-    validate(
-      need(identical(colnames(coordsDF)[colSums(is.na(coordsDF)) > 0], character(0)), TRUE,
-           message = FALSE
-      )
-    )
     remove(coordsDF)
     
     data <- data %>%
@@ -251,8 +247,8 @@ server <- function(input, output, session) {
     data <- data[as.numeric(data$year) >= as.numeric(input$yearStart) &
                    as.numeric(data$year) <= as.numeric(input$yearEnd), ]
     }
-    data %>% group_by(Species, Longitude, Latitude, Site) %>% 
-      summarize(abundance= n()) %>% ungroup() %>% dplyr::filter(grepl(Spec.choice(), Species, ignore.case = TRUE) == TRUE)
+    test <- data %>% group_by(Species, Longitude, Latitude, Site) %>% 
+      summarize(abundance= n()) %>% ungroup() %>% dplyr::filter(Species %in% Spec.choice())
   })
   
   # Filter the initial dataframe, but retain all columns. The product will be used for the download button 
@@ -261,7 +257,7 @@ server <- function(input, output, session) {
     if("Date" %in% names(data)){
       data <- data[as.numeric(data$year) >= as.numeric(input$yearStart) &
                      as.numeric(data$year) <= as.numeric(input$yearEnd), ]  }
-    new_df <- data %>% dplyr::filter(grepl(Spec.choice(), Species, ignore.case = TRUE) == TRUE)
+    new_df <- data %>% dplyr::filter(Species %in% Spec.choice())
   })
   
   # Make a leaflet map that won't change with the user's input
@@ -437,7 +433,7 @@ server <- function(input, output, session) {
     data <- data()
     click <- input$map_shape_click
     data <- data %>% filter(Site == click$id,
-                            grepl(Spec.choice(), Species, ignore.case = TRUE) == TRUE)
+                            Species %in% Spec.choice())
     output$clickInfo <- DT::renderDataTable({data}, options = list(scrollX = FALSE, paging = FALSE))
   }) 
 

@@ -135,7 +135,7 @@ server <- function(input, output, session) {
     req.names <- c("Species", "Latitude", "Longitude")
     if(all(req.names %in% colnames(data), TRUE) == FALSE){
       showNotification(paste("\nError: Missing or miss-spelled columns: ", paste(c(req.names[req.names %in% colnames(data) == FALSE]), collapse="\n"), sep=""),
-                       duration = NULL, type = "error"
+                       duration = 5, type = "error"
       )
     validate(
       need(all(req.names %in% colnames(data), TRUE) == TRUE,
@@ -335,7 +335,7 @@ server <- function(input, output, session) {
                                                  lat = "Latitude")
       if(length(rownames(new_df)) < 1){
         showNotification("Not enough data for interpolation",
-                          duration = NULL, type = "error"
+                          duration = 5, type = "error"
         )
       }
       validate(

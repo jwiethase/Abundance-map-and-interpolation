@@ -310,7 +310,7 @@ server <- function(input, output, session) {
         clearImages() %>% 
         clearShapes() %>% 
         leaflet::addCircles(lng=~Longitude, lat=~Latitude, radius = ~scales::rescale(abundance, to=c(1,10))*((max(Longitude+0.3) - min(Longitude-0.3))*input$circleSlider), weight = 1, color = "darkred",
-                            fillOpacity = 0.7, label = ~paste('Samples: ', abundance, sep=''),
+                            fillOpacity = 0.7, label = ~paste('Records: ', abundance, sep=''),
                             highlight = highlightOptions(
                               weight = 3,
                               color = "black",

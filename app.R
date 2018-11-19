@@ -51,7 +51,7 @@ ui <- shiny::bootstrapPage(tags$style(" #loadmessage {
                                                                      id = "tPanel",style = "overflow-y:hidden;overflow-x: hidden;
                                                                      max-height: 80%;opacity: 1;font-size:80%;",
                                                                      shiny::actionButton("helptext", "?", style='padding:4px; font-size:80%;
-                                                                                          position: absolute;top: 60px;right: 40px;'),
+                                                                                         position: absolute;top: 60px;right: 40px;'),
                                                                      shiny::fileInput(inputId = 'dataset', 
                                                                                       label = h5('Choose .csv file to upload'),
                                                                                       accept = c('.csv')),
@@ -64,10 +64,11 @@ ui <- shiny::bootstrapPage(tags$style(" #loadmessage {
                                                                      uiOutput("HelpBox6"),
                                                                      shiny::selectInput(inputId = "species.choices", 
                                                                                         label = h5("Species"),
-                                                                                        choices = ' '), 
+                                                                                        choices = ' ',
+                                                                                        multiple = TRUE), 
                                                                      splitLayout(
-                                                                     uiOutput("year1"),
-                                                                     uiOutput("year2")
+                                                                       uiOutput("year1"),
+                                                                       uiOutput("year2")
                                                                      ),
                                                                      splitLayout(
                                                                        shiny::checkboxInput("idw", "Interpolation (idw)", FALSE),
@@ -76,30 +77,30 @@ ui <- shiny::bootstrapPage(tags$style(" #loadmessage {
                                                                      splitLayout(
                                                                        shiny::checkboxInput("cluster", "Clustered markers", FALSE),
                                                                        shiny::checkboxInput("labels", "Static labels", TRUE)
-                                                                       ),
+                                                                     ),
                                                                      uiOutput("sliderCircle"),
                                                                      uiOutput("slider"),
                                                                      hr(),
                                                                      downloadButton('downloadData', 'Download')
-                                                ))
-                           ),
-                           shinyjs::hidden(
-                             div(
-                               id = "cp1",
-                               conditionalPanel("input.map_shape_click",
-                                                absolutePanel(top = "5%", bottom = "10%", right = "20%", left = "5%", height = "40%", width = "64%", 
-                                                              div(style = "display:inline-block;width:100%;text-align: right;",
-                                                                  actionButton("close", "x")),
-                                                              wellPanel(div(id = "tablepanel",
-                                                                            style =  "overflow-y: scroll;overflow-x: scroll; max-height: 500px; max-width: 1200px",
-                                                                            dataTableOutput("clickInfo")
-                                                                            )
-                                                                        ), draggable = TRUE
-                                                              )
-                                                )
-                               )
-                           )
-            
+                                                                     ))
+),
+shinyjs::hidden(
+  div(
+    id = "cp1",
+    conditionalPanel("input.map_shape_click",
+                     absolutePanel(top = "5%", bottom = "10%", right = "20%", left = "5%", height = "40%", width = "64%", 
+                                   div(style = "display:inline-block;width:100%;text-align: right;",
+                                       actionButton("close", "x")),
+                                   wellPanel(div(id = "tablepanel",
+                                                 style =  "overflow-y: scroll;overflow-x: scroll; max-height: 500px; max-width: 1200px",
+                                                 dataTableOutput("clickInfo")
+                                   )
+                                   ), draggable = TRUE
+                     )
+    )
+  )
+)
+
 )
 
 # Make the server functions
@@ -127,28 +128,25 @@ server <- function(input, output, session) {
     shinyjs::hide("cp1")
   })
   
-
+  
   data <- reactive({
     req(input$dataset)
     data <- fread(input$dataset$datapath) 
     req.names <- c("Species", "Latitude", "Longitude")
     if(all(req.names %in% colnames(data), TRUE) == FALSE){
       showNotification(paste("\nError: Missing or miss-spelled columns: ", paste(c(req.names[req.names %in% colnames(data) == FALSE]), collapse="\n"), sep=""),
-                       duration = NULL, type = "error"
+                       duration = 5, type = "error"
       )
-    validate(
-      need(all(req.names %in% colnames(data), TRUE) == TRUE,
-           message = FALSE
+      validate(
+        need(all(req.names %in% colnames(data), TRUE) == TRUE,
+             message = FALSE
+        )
       )
-    )
-   
+      
     }
-    data <- data %>%
-      mutate(Latitude = as.numeric(as.character(Latitude)),
-             Longitude = as.numeric(as.character(Longitude)))
     
     if("Site" %in% names(data) == FALSE){
-    data$Site <- data %>%
+      data$Site <- data %>%
         group_by(Latitude, Longitude) %>% 
         group_indices()
     }
@@ -162,16 +160,17 @@ server <- function(input, output, session) {
     coordsDF <- data %>% dplyr::select(Latitude, Longitude) %>% mutate(Latitude = as.numeric(Latitude),
                                                                        Longitude = as.numeric(Longitude))
     if(identical(colnames(coordsDF)[colSums(is.na(coordsDF)) > 0], character(0)) == FALSE){
-      showNotification( paste("\nError: Non-numeric value in column: ", paste(c(colnames(coordsDF)[colSums(is.na(coordsDF)) > 0]), collapse="\n"), sep=""),
-                       duration = NULL, type = "error"
+      showNotification( paste("\nWarning: Rows excluded due to non-numeric values in column: ", paste(c(colnames(coordsDF)[colSums(is.na(coordsDF)) > 0]), collapse="\n"), sep=""),
+                        duration = 5, type = "warning"
       )
     }
-    validate(
-      need(identical(colnames(coordsDF)[colSums(is.na(coordsDF)) > 0], character(0)), TRUE,
-           message = FALSE
-      )
-    )
     remove(coordsDF)
+    
+    data <- data %>%
+      mutate(Latitude = as.numeric(as.character(Latitude)),
+             Longitude = as.numeric(as.character(Longitude))) %>% 
+      filter(!is.na(Latitude), !is.na(Longitude))
+    
     data
   })
   
@@ -190,16 +189,16 @@ server <- function(input, output, session) {
       data <- data()
       choice <-  data.frame(year= unique(data[data$Species %in% Spec.choice(), "year"]))
       
-    output$year1 <- renderUI({
-      textInput(inputId = "yearStart", 
-                label = "From:",
-                value = min(choice$year))
-    })
+      output$year1 <- renderUI({
+        textInput(inputId = "yearStart", 
+                  label = "From:",
+                  value = min(choice$year))
+      })
       output$year2 <- renderUI({
         textInput(inputId = "yearEnd", 
                   label = "To:",
                   value = max(choice$year))
-    })
+      })
     }
   })
   
@@ -239,17 +238,17 @@ server <- function(input, output, session) {
     } else {
       return()}
   })
-
+  
   
   # Filter the initial dataframe by species and year chosen
   filteredData <- shiny::reactive({
     data <- data()
     if("Date" %in% names(data)){
-    data <- data[as.numeric(data$year) >= as.numeric(input$yearStart) &
-                   as.numeric(data$year) <= as.numeric(input$yearEnd), ]
+      data <- data[as.numeric(data$year) >= as.numeric(input$yearStart) &
+                     as.numeric(data$year) <= as.numeric(input$yearEnd), ]
     }
-    data %>% group_by(Species, Longitude, Latitude, Site) %>% 
-      summarize(abundance= n()) %>% ungroup() %>% dplyr::filter(grepl(Spec.choice(), Species, ignore.case = TRUE) == TRUE)
+    test <- data %>% group_by(Species, Longitude, Latitude, Site) %>% 
+      summarize(abundance= n()) %>% ungroup() %>% dplyr::filter(Species %in% Spec.choice())
   })
   
   # Filter the initial dataframe, but retain all columns. The product will be used for the download button 
@@ -258,21 +257,21 @@ server <- function(input, output, session) {
     if("Date" %in% names(data)){
       data <- data[as.numeric(data$year) >= as.numeric(input$yearStart) &
                      as.numeric(data$year) <= as.numeric(input$yearEnd), ]  }
-    new_df <- data %>% dplyr::filter(grepl(Spec.choice(), Species, ignore.case = TRUE) == TRUE)
+    new_df <- data %>% dplyr::filter(Species %in% Spec.choice())
   })
   
   # Make a leaflet map that won't change with the user's input
   output$map <- leaflet::renderLeaflet({
     leaflet::leaflet() %>%  
-      addProviderTiles(providers$Esri.WorldImagery, group = "Esri.WorldImagery") %>%
-      addProviderTiles(providers$Esri.WorldTopoMap, group = "Esri.WorldTopoMap") %>%
-      addProviderTiles(providers$OpenMapSurfer.Roads, group = "OpenMapSurfer.Roads") %>%
-      addProviderTiles(providers$Esri.DeLorme, group = "Esri.DeLorme") %>%
-      addProviderTiles(providers$OpenTopoMap, group = "OpenTopoMap") %>%
-      addProviderTiles(providers$OpenStreetMap.Mapnik, group = "OpenStreetMap.Mapnik") %>% 
+      addProviderTiles(providers$Esri.WorldImagery, group = "Esri.WorldImagery", options = providerTileOptions(minZoom = 2)) %>%
+      addProviderTiles(providers$Esri.WorldTopoMap, group = "Esri.WorldTopoMap", options = providerTileOptions(minZoom = 2)) %>%
+      addProviderTiles(providers$OpenMapSurfer.Roads, group = "OpenMapSurfer.Roads", options = providerTileOptions(minZoom = 2)) %>%
+      addProviderTiles(providers$Esri.DeLorme, group = "Esri.DeLorme", options = providerTileOptions(minZoom = 2)) %>%
+      addProviderTiles(providers$OpenTopoMap, group = "OpenTopoMap", options = providerTileOptions(minZoom = 2)) %>%
+      addProviderTiles(providers$OpenStreetMap.Mapnik, group = "OpenStreetMap.Mapnik", options = providerTileOptions(minZoom = 2)) %>% 
       addEasyButton(easyButton(
-        icon = "fa-globe", title = "Zoom to Level 3",
-        onClick = JS("function(btn, map){ map.setZoom(3);}"))) %>% 
+        icon = "fa-globe", title = "Zoom to Level 2",
+        onClick = JS("function(btn, map){ map.setZoom(2);}"))) %>% 
       leaflet.extras::addSearchOSM() %>% 
       leaflet.extras::addFullscreenControl() %>%
       addLayersControl(
@@ -307,18 +306,18 @@ server <- function(input, output, session) {
         sliderInput("circleSlider", "Circle size", min=10, max=2000, step = 10, value=1100)
       })
       observeEvent(input$circleSlider, {
-      map <- map %>% 
-        clearImages() %>% 
-        clearShapes() %>% 
-        leaflet::addCircles(lng=~Longitude, lat=~Latitude, radius = ~scales::rescale(abundance, to=c(1,10))*((max(Longitude+0.3) - min(Longitude-0.3))*input$circleSlider), weight = 1, color = "darkred",
-                            fillOpacity = 0.7, label = ~paste('Samples: ', abundance, sep=''),
-                            highlight = highlightOptions(
-                              weight = 3,
-                              color = "black",
-                              opacity = 1.0,
-                              bringToFront = TRUE,
-                              sendToBack = TRUE),
-                            layerId = ~Site)
+        map <- map %>% 
+          clearImages() %>% 
+          clearShapes() %>% 
+          leaflet::addCircles(lng=~Longitude, lat=~Latitude, radius = ~scales::rescale(abundance, to=c(1,10))*((max(Longitude+0.3) - min(Longitude-0.3))*input$circleSlider), weight = 1, color = "darkred",
+                              fillOpacity = 0.7, label = ~paste('Records: ', abundance, sep=''),
+                              highlight = highlightOptions(
+                                weight = 3,
+                                color = "black",
+                                opacity = 1.0,
+                                bringToFront = TRUE,
+                                sendToBack = TRUE),
+                              layerId = ~Site)
       })
     } else {
       map <- map %>% 
@@ -336,7 +335,7 @@ server <- function(input, output, session) {
                                                  lat = "Latitude")
       if(length(rownames(new_df)) < 1){
         showNotification("Not enough data for interpolation",
-                          duration = NULL, type = "error"
+                         duration = 5, type = "error"
         )
       }
       validate(
@@ -434,10 +433,10 @@ server <- function(input, output, session) {
     data <- data()
     click <- input$map_shape_click
     data <- data %>% filter(Site == click$id,
-                            grepl(Spec.choice(), Species, ignore.case = TRUE) == TRUE)
+                            Species %in% Spec.choice())
     output$clickInfo <- DT::renderDataTable({data}, options = list(scrollX = FALSE, paging = FALSE))
   }) 
-
+  
   # Download the filtered dataframe
   output$downloadData <- downloadHandler(
     filename = function() { 

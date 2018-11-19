@@ -65,11 +65,8 @@ ui <- shiny::bootstrapPage(tags$style(" #loadmessage {
                                                                      shiny::selectInput(inputId = "species.choices", 
                                                                                         label = h5("Species"),
                                                                                         choices = ' ',
-                                                                                        multiple = TRUE), 
-                                                                     splitLayout(
-                                                                       uiOutput("year1"),
-                                                                       uiOutput("year2")
-                                                                     ),
+                                                                                        multiple = FALSE), 
+                                                                     uiOutput("checkbox"),
                                                                      splitLayout(
                                                                        shiny::checkboxInput("idw", "Interpolation (idw)", FALSE),
                                                                        shiny::checkboxInput("circles", "Circle markers", FALSE)
@@ -142,7 +139,6 @@ server <- function(input, output, session) {
              message = FALSE
         )
       )
-      
     }
     
     if("Site" %in% names(data) == FALSE){
@@ -183,25 +179,19 @@ server <- function(input, output, session) {
     gsub("[[:space:]]\\(.*$", "", input$species.choices)
   })
   
-  # Render the year input fields, if column 'Date' exists
+  # Modify the checkbox options for year depending on the subsetted dataframe
   observeEvent(input$species.choices, {
     if("Date" %in% names(data())){
-      data <- data()
-      choice <-  data.frame(year= unique(data[data$Species %in% Spec.choice(), "year"]))
-      
-      output$year1 <- renderUI({
-        textInput(inputId = "yearStart", 
-                  label = "From:",
-                  value = min(choice$year))
-      })
-      output$year2 <- renderUI({
-        textInput(inputId = "yearEnd", 
-                  label = "To:",
-                  value = max(choice$year))
+      output$checkbox <- renderUI({
+        data <- data()
+        choice <-  data.frame(year= unique(data[data$Species %in% Spec.choice(), "year"]))
+        choice$year <- choice$year[order(choice$year, decreasing = TRUE)]
+        checkboxGroupInput(inputId = "checkbox",
+                           label = h4("Year"),
+                           choices = choice$year, selected = choice$year)
       })
     }
   })
-  
   output$HelpBox1 = renderUI({
     if (input$helptext %% 2){
       helpText("Warning: Dataset has to include all of the following column names:")
@@ -244,10 +234,9 @@ server <- function(input, output, session) {
   filteredData <- shiny::reactive({
     data <- data()
     if("Date" %in% names(data)){
-      data <- data[as.numeric(data$year) >= as.numeric(input$yearStart) &
-                     as.numeric(data$year) <= as.numeric(input$yearEnd), ]
+      data <- data[data$year %in% input$checkbox, ]
     }
-    test <- data %>% group_by(Species, Longitude, Latitude, Site) %>% 
+    data %>% group_by(Species, Longitude, Latitude, Site) %>% 
       summarize(abundance= n()) %>% ungroup() %>% dplyr::filter(Species %in% Spec.choice())
   })
   
@@ -255,9 +244,8 @@ server <- function(input, output, session) {
   DataDetailed <- shiny::reactive({
     data <- data()
     if("Date" %in% names(data)){
-      data <- data[as.numeric(data$year) >= as.numeric(input$yearStart) &
-                     as.numeric(data$year) <= as.numeric(input$yearEnd), ]  }
-    new_df <- data %>% dplyr::filter(Species %in% Spec.choice())
+      data <- data[data$year %in% input$checkbox, ]  }
+    data %>% dplyr::filter(Species %in% Spec.choice())
   })
   
   # Make a leaflet map that won't change with the user's input

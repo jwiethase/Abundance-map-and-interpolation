@@ -271,8 +271,8 @@ server <- function(input, output, session) {
       addProviderTiles(providers$OpenTopoMap, group = "OpenTopoMap") %>%
       addProviderTiles(providers$OpenStreetMap.Mapnik, group = "OpenStreetMap.Mapnik") %>% 
       addEasyButton(easyButton(
-        icon = "fa-globe", title = "Zoom to Level 1",
-        onClick = JS("function(btn, map){ map.setZoom(1);}"))) %>% 
+        icon = "fa-globe", title = "Zoom to Level 3",
+        onClick = JS("function(btn, map){ map.setZoom(3);}"))) %>% 
       leaflet.extras::addSearchOSM() %>% 
       leaflet.extras::addFullscreenControl() %>%
       addLayersControl(

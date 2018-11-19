@@ -65,7 +65,7 @@ ui <- shiny::bootstrapPage(tags$style(" #loadmessage {
                                                                      shiny::selectInput(inputId = "species.choices", 
                                                                                         label = h5("Species"),
                                                                                         choices = ' ',
-                                                                                        multiple = FALSE), 
+                                                                                        multiple = TRUE), 
                                                                      uiOutput("checkbox"),
                                                                      splitLayout(
                                                                        shiny::checkboxInput("idw", "Interpolation (idw)", FALSE),

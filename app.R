@@ -55,7 +55,7 @@ ui <- shiny::bootstrapPage(tags$style(" #loadmessage {
                                                                      shiny::fileInput(inputId = 'dataset', 
                                                                                       label = h5('Choose .csv file to upload'),
                                                                                       accept = c('.csv')),
-                                                                     uiOutput("out"),
+                                                                     # uiOutput("out"),
                                                                      uiOutput("HelpBox1"),
                                                                      uiOutput("HelpBox2"),
                                                                      uiOutput("HelpBox3"),
@@ -80,7 +80,8 @@ ui <- shiny::bootstrapPage(tags$style(" #loadmessage {
                                                                      hr(),
                                                                      downloadButton('downloadData', 'Download')
                                                                      ))
-),
+)
+,
 shinyjs::hidden(
   div(
     id = "cp1",
@@ -433,13 +434,13 @@ server <- function(input, output, session) {
   })
   
   
-  output$out <- renderPrint({
-    validate(need(input$map_click, FALSE))
-    output$out <- renderUI({
-      df <- input$map_click
-      textInput("Coords", "Clicked coordinates:", value = paste(round(df[[1]], digits= 4), ", ", round(df[[2]], digits= 4), sep = ""))
-    })
-  })
+  # output$out <- renderPrint({
+  #   validate(need(input$map_click, FALSE))
+  #   output$out <- renderUI({
+  #     df <- input$map_click
+  #     textInput("Coords", "Clicked coordinates:", value = paste(round(df[[1]], digits= 4), ", ", round(df[[2]], digits= 4), sep = ""))
+  #   })
+  # })
   
   observeEvent(input$map_click, {
     click <- input$map_click

@@ -73,7 +73,7 @@ ui <- shiny::bootstrapPage(tags$style(" #loadmessage {
                                                                      ),
                                                                      splitLayout(
                                                                        shiny::checkboxInput("cluster", "Clustered markers", FALSE),
-                                                                       shiny::checkboxInput("labels", "Static labels", TRUE)
+                                                                       shiny::checkboxInput("diversity", "Show diversity", FALSE)
                                                                      ),
                                                                      uiOutput("sliderCircle"),
                                                                      uiOutput("slider"),
@@ -236,8 +236,15 @@ server <- function(input, output, session) {
     if("Date" %in% names(data)){
       data <- data[data$year %in% input$checkbox, ]
     }
-    data %>% group_by(Species, Longitude, Latitude, Site) %>% 
+    if(input$diversity == FALSE){
+    data <- data %>% group_by(Species, Longitude, Latitude, Site) %>% 
       summarize(abundance= n()) %>% ungroup() %>% dplyr::filter(Species %in% Spec.choice())
+    } 
+    if(input$diversity == TRUE) {
+      data <- data %>% group_by(Longitude, Latitude, Site) %>% 
+        summarize(diversity= length(unique(Species))) %>% ungroup()
+    }
+  data
   })
   
   # Filter the initial dataframe, but retain all columns. The product will be used for the download button 
@@ -245,7 +252,6 @@ server <- function(input, output, session) {
     data <- data()
     if("Date" %in% names(data)){
       data <- data[data$year %in% input$checkbox, ]  }
-    data %>% dplyr::filter(Species %in% Spec.choice())
   })
   
   # Make a leaflet map that won't change with the user's input
@@ -263,7 +269,7 @@ server <- function(input, output, session) {
       leaflet.extras::addSearchOSM() %>% 
       leaflet.extras::addFullscreenControl() %>%
       addLayersControl(
-        baseGroups = c('Esri.WorldImagery', 'Esri.WorldTopoMap', 'OpenMapSurfer.Roads', 'Esri.DeLorme', 'OpenTopoMap', "OpenStreetMap.Mapnik"),
+        baseGroups = c('Esri.WorldImagery', 'Esri.WorldTopoMap', 'OpenMapSurfer.Roads', 'Esri.DeLorme', 'OpenTopoMap', 'OpenStreetMap.Mapnik'),
         options = layersControlOptions(collapsed = TRUE),
         position = "topleft"
       ) %>% 
@@ -294,6 +300,7 @@ server <- function(input, output, session) {
         sliderInput("circleSlider", "Circle size", min=10, max=2000, step = 10, value=1100)
       })
       observeEvent(input$circleSlider, {
+        if(input$diversity == FALSE){
         map <- map %>% 
           clearImages() %>% 
           clearShapes() %>% 
@@ -306,6 +313,23 @@ server <- function(input, output, session) {
                                 bringToFront = TRUE,
                                 sendToBack = TRUE),
                               layerId = ~Site)
+        } 
+        if(input$diversity == TRUE){
+          map <- map %>% 
+            clearImages() %>% 
+            clearShapes() %>% 
+            leaflet::addCircles(lng=~Longitude, lat=~Latitude, radius = ~scales::rescale(diversity, to=c(1,10))*((max(Longitude+0.3) - min(Longitude-0.3))*input$circleSlider), weight = 1, color = "darkred",
+                                fillOpacity = 0.7, label = ~paste('Records: ', diversity, sep=''),
+                                highlight = highlightOptions(
+                                  weight = 3,
+                                  color = "black",
+                                  opacity = 1.0,
+                                  bringToFront = TRUE,
+                                  sendToBack = TRUE),
+                                layerId = ~Site)
+          
+        }
+        
       })
     } else {
       map <- map %>% 
@@ -360,8 +384,14 @@ server <- function(input, output, session) {
         sp::proj4string(grd) <- sp::proj4string(spdf)
         
         # Run the interpolation f
+        if(input$diversity == FALSE){
         P.idw <- gstat::idw(new_df$abundance ~ 1, locations = spdf, newdata = grd, idp = input$Slider)
+        }
         
+        if(input$diversity == FALSE){
+          P.idw <- gstat::idw(new_df$diversity ~ 1, locations = spdf, newdata = grd, idp = input$Slider)
+        }
+          
         # Convert to raster object
         r <- raster::raster(P.idw)
         pal <- colorNumeric(c("#FFFFCC", "#41B6C4", "#0C2C84"), values(r),
@@ -379,7 +409,6 @@ server <- function(input, output, session) {
     }
     
     observeEvent({
-      input$labels
       input$cluster
     }, {
       map <- map %>% 
@@ -390,12 +419,12 @@ server <- function(input, output, session) {
         map <- map %>% 
           leaflet::addMarkers(data= sites,lng=~Longitude, lat=~Latitude, label = ~as.character(Site),
                               clusterOptions = markerClusterOptions(),
-                              labelOptions = labelOptions(noHide = input$labels),
+                              labelOptions = labelOptions(noHide = FALSE),
                               layerId = ~Site) 
       } else {
         map <- map %>% 
           leaflet::addMarkers(data= sites,lng=~Longitude, lat=~Latitude, label = ~as.character(Site),
-                              labelOptions = labelOptions(noHide = input$labels),
+                              labelOptions = labelOptions(noHide = FALSE),
                               layerId = ~Site)
       }
     })

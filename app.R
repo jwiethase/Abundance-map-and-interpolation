@@ -251,7 +251,9 @@ server <- function(input, output, session) {
   DataDetailed <- shiny::reactive({
     data <- data()
     if("Date" %in% names(data)){
-      data <- data[data$year %in% input$checkbox, ]  }
+      data <- data[data$year %in% input$checkbox, ]  
+    }
+    data
   })
   
   # Make a leaflet map that won't change with the user's input
@@ -449,8 +451,13 @@ server <- function(input, output, session) {
   observeEvent(input$map_shape_click, {
     data <- data()
     click <- input$map_shape_click
+    if(input$diversity == FALSE) {
     data <- data %>% filter(Site == click$id,
                             Species %in% Spec.choice())
+    }
+    if(input$diversity == TRUE) {
+      data <- data %>% filter(Site == click$id)
+    }
     output$clickInfo <- DT::renderDataTable({data}, options = list(scrollX = FALSE, paging = FALSE))
   }) 
   

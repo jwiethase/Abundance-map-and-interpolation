@@ -456,7 +456,10 @@ server <- function(input, output, session) {
                             Species %in% Spec.choice())
     }
     if(input$diversity == TRUE) {
-      data <- data %>% filter(Site == click$id)
+      data <- data %>% 
+        filter(Site == click$id) %>% 
+        group_by(Species, Site, Latitude, Longitude) %>% 
+        summarize(abundance = n())
     }
     output$clickInfo <- DT::renderDataTable({data}, options = list(scrollX = FALSE, paging = FALSE))
   }) 

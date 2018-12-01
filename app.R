@@ -64,7 +64,7 @@ ui <- shiny::bootstrapPage(tags$style(" #loadmessage {
                                                                      uiOutput("HelpBox6"),
                                                                      uiOutput("Species"),
                                                                      uiOutput("checkbox"),
-                                                                     a(id = "toggleAdvanced", "Show/hide advanced controls", href = "#"),
+                                                                     a(id = "toggleAdvanced", "Show/hide advanced controls"),
                                                                      shinyjs::hidden(
                                                                        div(id = "advanced",
                                                                            splitLayout(
@@ -425,6 +425,7 @@ server <- function(input, output, session) {
     }
     
     observeEvent({
+      input$labels
       input$cluster
     }, {
       map <- map %>% 
@@ -435,12 +436,12 @@ server <- function(input, output, session) {
         map <- map %>% 
           leaflet::addMarkers(data= sites,lng=~Longitude, lat=~Latitude, label = ~as.character(Site),
                               clusterOptions = markerClusterOptions(),
-                              labelOptions = labelOptions(noHide = FALSE),
+                              labelOptions = labelOptions(noHide = input$labels),
                               layerId = ~Site) 
       } else {
         map <- map %>% 
           leaflet::addMarkers(data= sites,lng=~Longitude, lat=~Latitude, label = ~as.character(Site),
-                              labelOptions = labelOptions(noHide = FALSE),
+                              labelOptions = labelOptions(noHide = input$labels),
                               layerId = ~Site)
       }
     })

@@ -301,13 +301,14 @@ server <- function(input, output, session) {
       addProviderTiles(providers$Esri.DeLorme, group = "Esri.DeLorme", options = providerTileOptions(minZoom = 2)) %>%
       addProviderTiles(providers$OpenTopoMap, group = "OpenTopoMap", options = providerTileOptions(minZoom = 2)) %>%
       addProviderTiles(providers$OpenStreetMap.Mapnik, group = "OpenStreetMap.Mapnik", options = providerTileOptions(minZoom = 2)) %>% 
+      addProviderTiles(providers$Esri.WorldGrayCanvas, group = "Esri.WorldGrayCanvas", options = providerTileOptions(minZoom = 2)) %>% 
       addEasyButton(easyButton(
         icon = "fa-globe", title = "Zoom to Level 2",
         onClick = JS("function(btn, map){ map.setZoom(2);}"))) %>% 
       leaflet.extras::addSearchOSM() %>% 
       leaflet.extras::addFullscreenControl() %>%
       addLayersControl(
-        baseGroups = c('Esri.WorldImagery', 'Esri.WorldTopoMap', 'OpenMapSurfer.Roads', 'Esri.DeLorme', 'OpenTopoMap', 'OpenStreetMap.Mapnik'),
+        baseGroups = c('Esri.WorldImagery', 'Esri.WorldTopoMap', 'OpenMapSurfer.Roads', 'Esri.DeLorme', 'OpenTopoMap', 'OpenStreetMap.Mapnik', 'Esri.WorldGrayCanvas'),
         options = layersControlOptions(collapsed = TRUE),
         position = "topleft"
       ) %>% 

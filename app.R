@@ -151,6 +151,10 @@ server <- function(input, output, session) {
         group_indices()
     }
     
+    if(length(data$Site) >= 50){
+      updateCheckboxInput(session, "labels", value = FALSE)
+    }
+    
     if("Date" %in% names(data)){
       data <- data %>%
         mutate(Date = lubridate::dmy(Date),

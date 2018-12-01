@@ -62,10 +62,7 @@ ui <- shiny::bootstrapPage(tags$style(" #loadmessage {
                                                                      uiOutput("HelpBox4"),
                                                                      uiOutput("HelpBox5"),
                                                                      uiOutput("HelpBox6"),
-                                                                     shiny::selectInput(inputId = "species.choices", 
-                                                                                        label = h5("Species"),
-                                                                                        choices = ' ',
-                                                                                        multiple = TRUE), 
+                                                                     uiOutput("Species"),
                                                                      uiOutput("checkbox"),
                                                                      splitLayout(
                                                                        shiny::checkboxInput("idw", "Interpolation (idw)", FALSE),
@@ -172,8 +169,15 @@ server <- function(input, output, session) {
   })
   
   observeEvent(data(), {
-    Species.choices <- data() %>% dplyr::select(Species) %>% unique() %>% arrange(Species)
-    updateSelectInput(session, "species.choices", choices= Species.choices$Species)
+    output$Species <- renderUI({
+      data <- data()
+      Spec.choices <- data %>% dplyr::select(Species) %>% unique() %>% arrange(Species)
+      shiny::selectInput(inputId = "species.choices", 
+                         label = h5("Species"),
+                         choices = Spec.choices$Species,
+                         selected = Spec.choices$Species[1],
+                         multiple = TRUE)
+    })
   })
   
   Spec.choice <- reactive({
@@ -238,14 +242,14 @@ server <- function(input, output, session) {
       data <- data[data$year %in% input$checkbox, ]
     }
     if(input$diversity == FALSE){
-    data <- data %>% group_by(Species, Longitude, Latitude, Site) %>% 
-      summarize(abundance= n()) %>% ungroup() %>% dplyr::filter(Species %in% Spec.choice())
+      data <- data %>% group_by(Species, Longitude, Latitude, Site) %>% 
+        summarize(abundance= n()) %>% ungroup() %>% dplyr::filter(Species %in% Spec.choice())
     } 
     if(input$diversity == TRUE) {
       data <- data %>% group_by(Longitude, Latitude, Site) %>% 
         summarize(diversity= length(unique(Species))) %>% ungroup()
     }
-  data
+    data
   })
   
   # Filter the initial dataframe, but retain all columns. The product will be used for the download button 
@@ -304,18 +308,18 @@ server <- function(input, output, session) {
       })
       observeEvent(input$circleSlider, {
         if(input$diversity == FALSE){
-        map <- map %>% 
-          clearImages() %>% 
-          clearShapes() %>% 
-          leaflet::addCircles(lng=~Longitude, lat=~Latitude, radius = ~scales::rescale(abundance, to=c(1,10))*((max(Longitude+0.3) - min(Longitude-0.3))*input$circleSlider), weight = 1, color = "darkred",
-                              fillOpacity = 0.7, label = ~paste('Records: ', abundance, sep=''),
-                              highlight = highlightOptions(
-                                weight = 3,
-                                color = "black",
-                                opacity = 1.0,
-                                bringToFront = TRUE,
-                                sendToBack = TRUE),
-                              layerId = ~Site)
+          map <- map %>% 
+            clearImages() %>% 
+            clearShapes() %>% 
+            leaflet::addCircles(lng=~Longitude, lat=~Latitude, radius = ~scales::rescale(abundance, to=c(1,10))*((max(Longitude+0.3) - min(Longitude-0.3))*input$circleSlider), weight = 1, color = "darkred",
+                                fillOpacity = 0.7, label = ~paste('Records: ', abundance, sep=''),
+                                highlight = highlightOptions(
+                                  weight = 3,
+                                  color = "black",
+                                  opacity = 1.0,
+                                  bringToFront = TRUE,
+                                  sendToBack = TRUE),
+                                layerId = ~Site)
         } 
         if(input$diversity == TRUE){
           map <- map %>% 
@@ -388,13 +392,13 @@ server <- function(input, output, session) {
         
         # Run the interpolation f
         if(input$diversity == FALSE){
-        P.idw <- gstat::idw(new_df$abundance ~ 1, locations = spdf, newdata = grd, idp = input$Slider)
+          P.idw <- gstat::idw(new_df$abundance ~ 1, locations = spdf, newdata = grd, idp = input$Slider)
         }
         
         if(input$diversity == FALSE){
           P.idw <- gstat::idw(new_df$diversity ~ 1, locations = spdf, newdata = grd, idp = input$Slider)
         }
-          
+        
         # Convert to raster object
         r <- raster::raster(P.idw)
         pal <- colorNumeric(c("#FFFFCC", "#41B6C4", "#0C2C84"), values(r),
@@ -453,8 +457,8 @@ server <- function(input, output, session) {
     data <- data()
     click <- input$map_shape_click
     if(input$diversity == FALSE) {
-    data <- data %>% filter(Site == click$id,
-                            Species %in% Spec.choice())
+      data <- data %>% filter(Site == click$id,
+                              Species %in% Spec.choice())
     }
     if(input$diversity == TRUE) {
       data <- data %>% 

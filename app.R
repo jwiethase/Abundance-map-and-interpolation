@@ -216,8 +216,12 @@ server <- function(input, output, session) {
   })
   
   # Modify the checkbox options for year depending on the subsetted dataframe
-  observeEvent(input$species.choices, {
-    if("Date" %in% names(data())){
+  observeEvent(
+    {
+    input$species.choices
+    input$diversity
+    }, {
+    if("Date" %in% names(data()) & input$diversity == FALSE){
       output$checkbox <- renderUI({
         data <- data()
         choice <-  data.frame(year= unique(data[data$Species %in% Spec.choice(), "year"]))
@@ -227,6 +231,16 @@ server <- function(input, output, session) {
                            choices = choice$year, selected = choice$year)
       })
     }
+      if("Date" %in% names(data()) & input$diversity == TRUE){
+        output$checkbox <- renderUI({
+          data <- data()
+          # choice <-  data.frame(year= unique(data$year))
+          # choice$year <- choice$year[order(choice$year, decreasing = TRUE)]
+          checkboxGroupInput(inputId = "checkbox",
+                             label = h4("Year"),
+                             choices = unique(data$year), selected =  unique(data$year))
+        })
+      }
   })
   output$HelpBox1 = renderUI({
     if (input$helptext %% 2){
@@ -426,7 +440,7 @@ server <- function(input, output, session) {
         # Add P's projection information to the empty grid
         sp::proj4string(grd) <- sp::proj4string(spdf)
         
-        # Run the interpolation f
+        # Run the interpolation 
         if(input$diversity == FALSE){
           P.idw <- gstat::idw(new_df$abundance ~ 1, locations = spdf, newdata = grd, idp = input$Slider)
         }
@@ -482,20 +496,26 @@ server <- function(input, output, session) {
   #     textInput("Coords", "Clicked coordinates:", value = paste(round(df[[1]], digits= 4), ", ", round(df[[2]], digits= 4), sep = ""))
   #   })
   # })
-  
-  observeEvent(input$map_click, {
-    click <- input$map_click
-    leafletProxy('map') %>%
-      removeMarker(layerId = click$id) %>% 
-      leaflet::addCircleMarkers(data = click, lng=~lng, lat=~lat, layerId = ~id, radius = 2, opacity = 1,
-                                stroke = FALSE, color = "black")
-  })
+  # 
+  # observeEvent(input$map_click, {
+  #   click <- input$map_click
+  #   leafletProxy('map') %>%
+  #     removeMarker(layerId = click$id) %>% 
+  #     leaflet::addCircleMarkers(data = click, lng=~lng, lat=~lat, layerId = ~id, radius = 2, opacity = 1,
+  #                               stroke = FALSE, color = "black")
+  # })
   observeEvent(input$map_shape_click, {
-    data <- data()
+    data <- DataDetailed()
     click <- input$map_shape_click
     if(input$diversity == FALSE) {
       data <- data %>% filter(Site == click$id,
                               Species %in% Spec.choice())
+    }
+    if(input$diversity == TRUE & "Date" %in% names(data)) {
+      data <- data %>% 
+        filter(Site == click$id) %>% 
+        group_by(Species, Site, Latitude, Longitude, Date, year) %>% 
+        summarize(abundance = n())
     }
     if(input$diversity == TRUE) {
       data <- data %>% 

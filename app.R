@@ -64,25 +64,28 @@ ui <- shiny::bootstrapPage(tags$style(" #loadmessage {
                                                                      uiOutput("HelpBox6"),
                                                                      uiOutput("Species"),
                                                                      uiOutput("checkbox"),
+                                                                     conditionalPanel("output.fileUploaded == true",
+                                                                     splitLayout(
+                                                                             shiny::checkboxInput("idw", "Interpolation (idw)", FALSE),
+                                                                             shiny::checkboxInput("circles", "Circle markers", TRUE)
+                                                                           ),
+                                                                     splitLayout(
+                                                                             shiny::checkboxInput("cluster", "Clustered markers", FALSE),
+                                                                             shiny::checkboxInput("diversity", "Show diversity", FALSE)
+                                                                     ),
+                                                                     shiny::checkboxInput("labels", "Static labels", TRUE),
                                                                      a(id = "toggleAdvanced", "Show/hide advanced controls"),
                                                                      shinyjs::hidden(
                                                                        div(id = "advanced",
-                                                                           splitLayout(
-                                                                             shiny::checkboxInput("idw", "Interpolation (idw)", FALSE),
-                                                                             shiny::checkboxInput("circles", "Circle markers", FALSE)
-                                                                           ),
-                                                                           splitLayout(
-                                                                             shiny::checkboxInput("cluster", "Clustered markers", FALSE),
-                                                                             shiny::checkboxInput("diversity", "Show diversity", FALSE)
-                                                                           ),
-                                                                           shiny::checkboxInput("labels", "Static labels", TRUE),
                                                                            hr(),
                                                                            uiOutput("sliderCircle"),
                                                                            uiOutput("slider"),
                                                                            downloadButton('downloadData', 'Download')
                                                                        )
                                                                      )
-                                                                     ))
+                                                                     )
+                                                                     )
+                                                                 )
 )
 ,
 shinyjs::hidden(
@@ -136,6 +139,8 @@ server <- function(input, output, session) {
   data <- reactive({
     req(input$dataset)
     data <- fread(input$dataset$datapath) 
+    if(is.null(input$dataset)) return(NULL)
+    
     req.names <- c("Species", "Latitude", "Longitude")
     if(all(req.names %in% colnames(data), TRUE) == FALSE){
       showNotification(paste("\nError: Missing or miss-spelled columns: ", paste(c(req.names[req.names %in% colnames(data) == FALSE]), collapse="\n"), sep=""),
@@ -174,9 +179,26 @@ server <- function(input, output, session) {
              Longitude = as.numeric(as.character(Longitude))) %>% 
       filter(!is.na(Latitude), !is.na(Longitude))
     
-    data
+    return(data)
   })
   
+  output$fileUploaded <- reactive({
+    return(!is.null(data()))
+  })
+  outputOptions(output, 'fileUploaded', suspendWhenHidden=FALSE)
+  
+  
+  observeEvent(data(), {
+    output$Species <- renderUI({
+      data <- data()
+      Spec.choices <- data %>% dplyr::select(Species) %>% unique() %>% arrange(Species)
+      shiny::selectInput(inputId = "species.choices", 
+                         label = h5("Species"),
+                         choices = Spec.choices$Species,
+                         selected = Spec.choices$Species[1],
+                         multiple = TRUE)
+    })
+  })
   observeEvent(data(), {
     output$Species <- renderUI({
       data <- data()
@@ -293,12 +315,16 @@ server <- function(input, output, session) {
                  position = "topleft") %>% 
       addScaleBar(position = c("bottomleft"))
   })
-  observeEvent(input$idw == TRUE,{
-    toggle("slider")
+  observeEvent(input$idw,{
+    toggle("slider", condition = input$idw == TRUE)
   })
   observeEvent(input$circles,{
-    toggle("sliderCircle", condition = )
+    toggle("sliderCircle", condition = input$circles == TRUE)
   })
+  observeEvent(input$diversity,{
+    toggle("Species", condition = input$diversity == FALSE)
+  })
+  
   # Update above leaflet map depending on user inputs
   
   shiny::observe({

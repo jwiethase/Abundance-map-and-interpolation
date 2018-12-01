@@ -64,18 +64,24 @@ ui <- shiny::bootstrapPage(tags$style(" #loadmessage {
                                                                      uiOutput("HelpBox6"),
                                                                      uiOutput("Species"),
                                                                      uiOutput("checkbox"),
-                                                                     splitLayout(
-                                                                       shiny::checkboxInput("idw", "Interpolation (idw)", FALSE),
-                                                                       shiny::checkboxInput("circles", "Circle markers", FALSE)
-                                                                     ),
-                                                                     splitLayout(
-                                                                       shiny::checkboxInput("cluster", "Clustered markers", FALSE),
-                                                                       shiny::checkboxInput("diversity", "Show diversity", FALSE)
-                                                                     ),
-                                                                     uiOutput("sliderCircle"),
-                                                                     uiOutput("slider"),
-                                                                     hr(),
-                                                                     downloadButton('downloadData', 'Download')
+                                                                     a(id = "toggleAdvanced", "Show/hide advanced controls", href = "#"),
+                                                                     shinyjs::hidden(
+                                                                       div(id = "advanced",
+                                                                           splitLayout(
+                                                                             shiny::checkboxInput("idw", "Interpolation (idw)", FALSE),
+                                                                             shiny::checkboxInput("circles", "Circle markers", FALSE)
+                                                                           ),
+                                                                           splitLayout(
+                                                                             shiny::checkboxInput("cluster", "Clustered markers", FALSE),
+                                                                             shiny::checkboxInput("diversity", "Show diversity", FALSE)
+                                                                           ),
+                                                                           shiny::checkboxInput("labels", "Static labels", TRUE),
+                                                                           hr(),
+                                                                           uiOutput("sliderCircle"),
+                                                                           uiOutput("slider"),
+                                                                           downloadButton('downloadData', 'Download')
+                                                                       )
+                                                                     )
                                                                      ))
 )
 ,
@@ -115,6 +121,9 @@ server <- function(input, output, session) {
       shinyjs::hide(id = "Sidebar")
     }
   })
+  
+  shinyjs::onclick("toggleAdvanced",
+                   shinyjs::toggle(id = "advanced", anim = TRUE))    
   
   observeEvent(input$map_shape_click,{
     shinyjs::show("cp1")
@@ -287,8 +296,8 @@ server <- function(input, output, session) {
   observeEvent(input$idw == TRUE,{
     toggle("slider")
   })
-  observeEvent(input$circles == TRUE,{
-    toggle("sliderCircle")
+  observeEvent(input$circles,{
+    toggle("sliderCircle", condition = )
   })
   # Update above leaflet map depending on user inputs
   

@@ -342,6 +342,7 @@ server <- function(input, output, session) {
       leaflet::fitBounds(~min(Longitude+.5), ~min(Latitude-.5), ~max(Longitude+.5), ~max(Latitude+.5))
     
     if(input$circles == TRUE){
+      
       map <- map  %>%  
         leaflet::fitBounds(~min(Longitude+.5), ~min(Latitude-.5), ~max(Longitude+.5), ~max(Latitude+.5))
       
@@ -350,7 +351,7 @@ server <- function(input, output, session) {
       })
       observeEvent(input$circleSlider, {
         if(input$diversity == FALSE){
-          map <- map %>% 
+          map <- leaflet::leafletProxy(map = "map", data = filteredData())  %>% 
             clearImages() %>% 
             clearShapes() %>% 
             leaflet::addCircles(lng=~Longitude, lat=~Latitude, radius = ~scales::rescale(abundance, to=c(1,10))*((max(Longitude+0.3) - min(Longitude-0.3))*input$circleSlider), weight = 1, color = "darkred",
@@ -364,7 +365,7 @@ server <- function(input, output, session) {
                                 layerId = ~Site)
         } 
         if(input$diversity == TRUE){
-          map <- map %>% 
+          map <- leaflet::leafletProxy(map = "map", data = filteredData())  %>% 
             clearImages() %>% 
             clearShapes() %>% 
             leaflet::addCircles(lng=~Longitude, lat=~Latitude, radius = ~scales::rescale(diversity, to=c(1,10))*((max(Longitude+0.3) - min(Longitude-0.3))*input$circleSlider), weight = 1, color = "darkred",
@@ -503,13 +504,7 @@ server <- function(input, output, session) {
       data <- data %>% filter(Site == click$id,
                               Species %in% Spec.choice())
     }
-    if(input$diversity == TRUE & "Date" %in% names(data) == TRUE) {
-      data <- data %>% 
-        filter(Site == click$id) %>% 
-        group_by(Species, Site, Latitude, Longitude, Date, year) %>% 
-        summarize(abundance = n())
-    }
-    if(input$diversity == TRUE& "Date" %in% names(data) == FALSE) {
+    if(input$diversity == TRUE) {
       data <- data %>% 
         filter(Site == click$id) %>% 
         group_by(Species, Site, Latitude, Longitude) %>% 

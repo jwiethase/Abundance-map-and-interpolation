@@ -511,13 +511,13 @@ server <- function(input, output, session) {
       data <- data %>% filter(Site == click$id,
                               Species %in% Spec.choice())
     }
-    if(input$diversity == TRUE & "Date" %in% names(data)) {
+    if(input$diversity == TRUE & "Date" %in% names(data) == TRUE) {
       data <- data %>% 
         filter(Site == click$id) %>% 
         group_by(Species, Site, Latitude, Longitude, Date, year) %>% 
         summarize(abundance = n())
     }
-    if(input$diversity == TRUE) {
+    if(input$diversity == TRUE& "Date" %in% names(data) == FALSE) {
       data <- data %>% 
         filter(Site == click$id) %>% 
         group_by(Species, Site, Latitude, Longitude) %>% 

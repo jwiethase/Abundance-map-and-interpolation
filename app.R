@@ -65,9 +65,6 @@ ui <- shiny::bootstrapPage(tags$style(" #loadmessage {
                                                                      uiOutput("Species"),
                                                                      uiOutput("checkbox"),
                                                                      conditionalPanel("output.fileUploaded == true",
-                                                                                      a(id = "toggleAdvanced", "Show/hide advanced controls"),
-                                                                                      shinyjs::hidden(
-                                                                                        div(id = "advanced",
                                                                      splitLayout(
                                                                              shiny::checkboxInput("idw", "Interpolation (idw)", FALSE),
                                                                              shiny::checkboxInput("circles", "Circle markers", TRUE)
@@ -81,8 +78,6 @@ ui <- shiny::bootstrapPage(tags$style(" #loadmessage {
                                                                            uiOutput("sliderCircle"),
                                                                            uiOutput("slider"),
                                                                            downloadButton('downloadData', 'Download')
-                                                                       )
-                                                                     )
                                                                      )
                                                                      )
                                                                  )
@@ -124,9 +119,6 @@ server <- function(input, output, session) {
       shinyjs::hide(id = "Sidebar")
     }
   })
-  
-  shinyjs::onclick("toggleAdvanced",
-                   shinyjs::toggle(id = "advanced", anim = TRUE))    
   
   observeEvent(input$map_shape_click,{
     shinyjs::show("cp1")

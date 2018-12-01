@@ -74,15 +74,12 @@ ui <- shiny::bootstrapPage(tags$style(" #loadmessage {
                                                                              shiny::checkboxInput("diversity", "Show diversity", FALSE)
                                                                      ),
                                                                      shiny::checkboxInput("labels", "Static labels", TRUE),
-                                                                     a(id = "toggleAdvanced", "Show/hide advanced controls"),
-                                                                     shinyjs::hidden(
                                                                        div(id = "advanced",
                                                                            hr(),
                                                                            uiOutput("sliderCircle"),
                                                                            uiOutput("slider"),
                                                                            downloadButton('downloadData', 'Download')
                                                                        )
-                                                                     )
                                                                      )
                                                                      )
                                                                  )
@@ -124,9 +121,6 @@ server <- function(input, output, session) {
       shinyjs::hide(id = "Sidebar")
     }
   })
-  
-  shinyjs::onclick("toggleAdvanced",
-                   shinyjs::toggle(id = "advanced", anim = TRUE))    
   
   observeEvent(input$map_shape_click,{
     shinyjs::show("cp1")
@@ -430,7 +424,7 @@ server <- function(input, output, session) {
           P.idw <- gstat::idw(new_df$abundance ~ 1, locations = spdf, newdata = grd, idp = input$Slider)
         }
         
-        if(input$diversity == FALSE){
+        if(input$diversity == TRUE){
           P.idw <- gstat::idw(new_df$diversity ~ 1, locations = spdf, newdata = grd, idp = input$Slider)
         }
         

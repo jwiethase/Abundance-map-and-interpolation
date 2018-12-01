@@ -386,25 +386,25 @@ server <- function(input, output, session) {
     }
     
     if(input$idw == TRUE){ 
+      new_df <- filteredData() %>% dplyr::rename(lon = "Longitude",
+                                                 lat = "Latitude")
+      if(length(rownames(new_df)) <= 1){
+        showNotification("Not enough data for interpolation",
+                         duration = 5, type = "error"
+        )
+      }
+      validate(
+        need(length(rownames(new_df)) > 1, message = FALSE)
+      )
       map <- map  %>%  
         leaflet::fitBounds(~min(Longitude+.2), ~min(Latitude-.2), ~max(Longitude+.2), ~max(Latitude+.2))
       
       output$slider <- renderUI({
         sliderInput("Slider", "Inverse Distance Weighting Power", min=0, max=5, value=2)
       })
-      new_df <- filteredData() %>% dplyr::rename(lon = "Longitude",
-                                                 lat = "Latitude")
-      if(length(rownames(new_df)) < 1){
-        showNotification("Not enough data for interpolation",
-                         duration = 5, type = "error"
-        )
-      }
-      validate(
-        need(length(rownames(new_df)) > 1, "Not enough data")
-      )
+      
       observeEvent(input$Slider, {
-        
-        
+  
         coords <- cbind(new_df$lon, new_df$lat)
         sp = sp::SpatialPoints(coords)
         spdf = sp::SpatialPointsDataFrame(sp, new_df)

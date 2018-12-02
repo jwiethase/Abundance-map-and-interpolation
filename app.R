@@ -414,6 +414,7 @@ server <- function(input, output, session) {
       output$slider <- renderUI({
         sliderInput("Slider", "Inverse Distance Weighting Power", min=0, max=5, value=2)
       })
+      outputOptions(output, "slider", suspendWhenHidden = FALSE)
       
       observeEvent(input$Slider, {
   

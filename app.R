@@ -68,42 +68,42 @@ ui <- shiny::bootstrapPage(tags$style(" #loadmessage {
                                                                                       a(id = "toggleAdvanced", "Show/hide advanced controls"),
                                                                                       shinyjs::hidden(
                                                                                         div(id = "advanced",
-                                                                                            splitLayout(
-                                                                                              shiny::checkboxInput("idw", "Interpolation (idw)", FALSE),
-                                                                                              shiny::checkboxInput("circles", "Circle markers", TRUE)
-                                                                                            ),
-                                                                                            splitLayout(
-                                                                                              shiny::checkboxInput("cluster", "Clustered markers", FALSE),
-                                                                                              shiny::checkboxInput("diversity", "Show diversity", FALSE)
-                                                                                            ),
-                                                                                            shiny::checkboxInput("labels", "Static labels", TRUE),
-                                                                                            hr(),
-                                                                                            uiOutput("sliderCircle"),
-                                                                                            uiOutput("slider"),
-                                                                                            downloadButton('downloadData', 'Download')
-                                                                                        )
-                                                                                      )
-                                                                     )))
-                                                )
-                           ,
-                           shinyjs::hidden(
-                             div(
-                               id = "cp1",
-                               conditionalPanel("input.map_shape_click",
-                                                absolutePanel(top = "5%", bottom = "10%", right = "20%", left = "5%", height = "40%", width = "64%", 
-                                                              div(style = "display:inline-block;width:100%;text-align: right;",
-                                                                  actionButton("close", "x")),
-                                                              wellPanel(div(id = "tablepanel",
-                                                                            style =  "overflow-y: scroll;overflow-x: scroll; max-height: 500px; max-width: 1200px",
-                                                                            dataTableOutput("clickInfo")
-                                                              )
-                                                              ), draggable = TRUE
-                                                )
-                               )
-                             )
-                           )
-                           
-                           )
+                                                                     splitLayout(
+                                                                             shiny::checkboxInput("idw", "Interpolation (idw)", FALSE),
+                                                                             shiny::checkboxInput("circles", "Circle markers", TRUE)
+                                                                           ),
+                                                                     splitLayout(
+                                                                             shiny::checkboxInput("cluster", "Clustered markers", FALSE),
+                                                                             shiny::checkboxInput("diversity", "Show diversity", FALSE)
+                                                                           ),
+                                                                     shiny::checkboxInput("labels", "Static labels", TRUE),
+                                                                           hr(),
+                                                                           uiOutput("sliderCircle"),
+                                                                           uiOutput("slider"),
+                                                                           downloadButton('downloadData', 'Download')
+                                                                     )
+                                                                     )
+                                                                 )))
+)
+,
+shinyjs::hidden(
+  div(
+    id = "cp1",
+    conditionalPanel("input.map_shape_click",
+                     absolutePanel(top = "5%", bottom = "10%", right = "20%", left = "5%", height = "40%", width = "64%", 
+                                   div(style = "display:inline-block;width:100%;text-align: right;",
+                                       actionButton("close", "x")),
+                                   wellPanel(div(id = "tablepanel",
+                                                 style =  "overflow-y: scroll;overflow-x: scroll; max-height: 500px; max-width: 1200px",
+                                                 dataTableOutput("clickInfo")
+                                   )
+                                   ), draggable = TRUE
+                     )
+    )
+  )
+)
+
+)
 
 # Make the server functions
 server <- function(input, output, session) {
@@ -219,19 +219,19 @@ server <- function(input, output, session) {
   # Modify the checkbox options for year depending on the subsetted dataframe
   observeEvent(
     {
-      input$species.choices
-      input$diversity
+    input$species.choices
+    input$diversity
     }, {
-      if("Date" %in% names(data()) & input$diversity == FALSE){
-        output$checkbox <- renderUI({
-          data <- data()
-          choice <-  data.frame(year= unique(data[data$Species %in% Spec.choice(), "year"]))
-          choice$year <- choice$year[order(choice$year, decreasing = TRUE)]
-          checkboxGroupInput(inputId = "checkbox",
-                             label = h4("Year"),
-                             choices = choice$year, selected = choice$year)
-        })
-      }
+    if("Date" %in% names(data()) & input$diversity == FALSE){
+      output$checkbox <- renderUI({
+        data <- data()
+        choice <-  data.frame(year= unique(data[data$Species %in% Spec.choice(), "year"]))
+        choice$year <- choice$year[order(choice$year, decreasing = TRUE)]
+        checkboxGroupInput(inputId = "checkbox",
+                           label = h4("Year"),
+                           choices = choice$year, selected = choice$year)
+      })
+    }
       if("Date" %in% names(data()) & input$diversity == TRUE){
         output$checkbox <- renderUI({
           data <- data()
@@ -242,7 +242,7 @@ server <- function(input, output, session) {
                              choices = unique(data$year), selected =  unique(data$year))
         })
       }
-    })
+  })
   output$HelpBox1 = renderUI({
     if (input$helptext %% 2){
       helpText("Warning: Dataset has to include all of the following column names:")
@@ -414,9 +414,10 @@ server <- function(input, output, session) {
       output$slider <- renderUI({
         sliderInput("Slider", "Inverse Distance Weighting Power", min=0, max=5, value=2)
       })
+      outputOptions(output, "slider", suspendWhenHidden = FALSE)
       
       observeEvent(input$Slider, {
-        
+  
         coords <- cbind(new_df$lon, new_df$lat)
         sp = sp::SpatialPoints(coords)
         spdf = sp::SpatialPointsDataFrame(sp, new_df)

@@ -528,7 +528,7 @@ server <- function(input, output, session) {
   # Download the filtered dataframe
   output$downloadData <- downloadHandler(
     filename = function() { 
-      paste(input$species.choices, ".csv", sep = "")
+      paste("data_", Sys.time(), ".csv", sep = "")
     },
     content = function(file) {
       write.csv(DataDetailed(), file, row.names = FALSE)

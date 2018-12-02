@@ -52,7 +52,7 @@ ui <- shiny::bootstrapPage(tags$style(" #loadmessage {
                                                                      id = "tPanel",style = "overflow-y:hidden;overflow-x: hidden;
                                                                      max-height: 80%;opacity: 1;font-size:80%;",
                                                                      shiny::actionButton("helptext", "?", style='padding:4px; font-size:80%;
-                                                                                         position: absolute;top: 60px;right: 40px;'),
+                                                                                         position: absolute;top: 60px;right: 70px;'),
                                                                      shiny::fileInput(inputId = 'dataset', 
                                                                                       label = h5('Choose .csv file to upload'),
                                                                                       accept = c('.csv')),
@@ -75,7 +75,7 @@ ui <- shiny::bootstrapPage(tags$style(" #loadmessage {
                                                                            ),
                                                                      splitLayout(
                                                                              shiny::checkboxInput("cluster", "Clustered markers", FALSE),
-                                                                             shiny::checkboxInput("diversity", "Show diversity", FALSE)
+                                                                             shiny::checkboxInput("richness", "Show richness", FALSE)
                                                                            ),
                                                                      shiny::checkboxInput("labels", "Static labels", TRUE),
                                                                            hr(),
@@ -194,13 +194,26 @@ server <- function(input, output, session) {
     output$Species <- renderUI({
       data <- data()
       Spec.choices <- data %>% dplyr::select(Species) %>% unique() %>% arrange(Species)
+      Spec <- data.frame(Species = c("Select all", Spec.choices$Species))
       shiny::selectInput(inputId = "species.choices", 
                          label = h5("Species"),
-                         choices = Spec.choices$Species,
-                         selected = Spec.choices$Species[1],
+                         choices = Spec$Species,
+                         selected = Spec$Species[2],
                          multiple = TRUE)
     })
   })
+  
+  observe({
+    data <- data()
+    Spec.choices <- data %>% dplyr::select(Species) %>% unique() %>% arrange(Species)
+    Spec <- data.frame(Species = c("Select all", Spec.choices$Species))
+    if ("Select All" %in% input$species.choices) {
+      # choose all the choices except "Select All"
+      selected_choices <- setdiff(Spec$Species, "Select All")
+      updateSelectInput(session, "species.choices", selected = selected_choices)
+    }
+  })
+  
   observeEvent(data(), {
     output$Species <- renderUI({
       data <- data()
@@ -221,19 +234,19 @@ server <- function(input, output, session) {
   observeEvent(
     {
     input$species.choices
-    input$diversity
+    input$richness
     }, {
-    if("Date" %in% names(data()) & input$diversity == FALSE){
+    if("Date" %in% names(data()) & input$richness == FALSE){
       output$checkbox <- renderUI({
         data <- data()
         choice <-  data.frame(year= unique(data[data$Species %in% Spec.choice(), "year"]))
         choice$year <- choice$year[order(choice$year, decreasing = TRUE)]
         checkboxGroupInput(inputId = "checkbox",
-                           label = h4("Year"),
+                           label = h5("Year"),
                            choices = choice$year, selected = choice$year)
       })
     }
-      if("Date" %in% names(data()) & input$diversity == TRUE){
+      if("Date" %in% names(data()) & input$richness == TRUE){
         output$checkbox <- renderUI({
           data <- data()
           # choice <-  data.frame(year= unique(data$year))
@@ -288,13 +301,13 @@ server <- function(input, output, session) {
     if("Date" %in% names(data)){
       data <- data[data$year %in% input$checkbox, ]
     }
-    if(input$diversity == FALSE){
+    if(input$richness == FALSE){
       data <- data %>% group_by(Species, Longitude, Latitude, Site) %>% 
         summarize(abundance= n()) %>% ungroup() %>% dplyr::filter(Species %in% Spec.choice())
     } 
-    if(input$diversity == TRUE) {
+    if(input$richness == TRUE) {
       data <- data %>% group_by(Longitude, Latitude, Site) %>% 
-        summarize(diversity= length(unique(Species))) %>% ungroup()
+        summarize(richness= length(unique(Species))) %>% ungroup()
     }
     data
   })
@@ -338,8 +351,8 @@ server <- function(input, output, session) {
   observeEvent(input$circles,{
     toggle("sliderCircle", condition = input$circles == TRUE)
   })
-  observeEvent(input$diversity,{
-    toggle("Species", condition = input$diversity == FALSE)
+  observeEvent(input$richness,{
+    toggle("Species", condition = input$richness == FALSE)
   })
   
   # Update above leaflet map depending on user inputs
@@ -362,7 +375,7 @@ server <- function(input, output, session) {
       outputOptions(output, "sliderCircle", suspendWhenHidden = FALSE)
       
       observeEvent(input$circleSlider, {
-        if(input$diversity == FALSE){
+        if(input$richness == FALSE){
           map <- leaflet::leafletProxy(map = "map", data = filteredData())  %>% 
             clearImages() %>% 
             clearShapes() %>% 
@@ -376,12 +389,12 @@ server <- function(input, output, session) {
                                   sendToBack = TRUE),
                                 layerId = ~Site)
         } 
-        if(input$diversity == TRUE){
+        if(input$richness == TRUE){
           map <- leaflet::leafletProxy(map = "map", data = filteredData())  %>% 
             clearImages() %>% 
             clearShapes() %>% 
-            leaflet::addCircles(lng=~Longitude, lat=~Latitude, radius = ~scales::rescale(diversity, to=c(1,10))*((max(Longitude+0.3) - min(Longitude-0.3))*input$circleSlider), weight = 1, color = "darkred",
-                                fillOpacity = 0.7, label = ~paste('Records: ', diversity, sep=''),
+            leaflet::addCircles(lng=~Longitude, lat=~Latitude, radius = ~scales::rescale(richness, to=c(1,10))*((max(Longitude+0.3) - min(Longitude-0.3))*input$circleSlider), weight = 1, color = "darkred",
+                                fillOpacity = 0.7, label = ~paste('Records: ', richness, sep=''),
                                 highlight = highlightOptions(
                                   weight = 3,
                                   color = "black",
@@ -447,12 +460,12 @@ server <- function(input, output, session) {
         sp::proj4string(grd) <- sp::proj4string(spdf)
         
         # Run the interpolation 
-        if(input$diversity == FALSE){
+        if(input$richness == FALSE){
           P.idw <- gstat::idw(new_df$abundance ~ 1, locations = spdf, newdata = grd, idp = input$Slider)
         }
         
-        if(input$diversity == TRUE){
-          P.idw <- gstat::idw(new_df$diversity ~ 1, locations = spdf, newdata = grd, idp = input$Slider)
+        if(input$richness == TRUE){
+          P.idw <- gstat::idw(new_df$richness ~ 1, locations = spdf, newdata = grd, idp = input$Slider)
         }
         
         # Convert to raster object
@@ -513,11 +526,11 @@ server <- function(input, output, session) {
   observeEvent(input$map_shape_click, {
     data <- DataDetailed()
     click <- input$map_shape_click
-    if(input$diversity == FALSE) {
+    if(input$richness == FALSE) {
       data <- data %>% filter(Site == click$id,
                               Species %in% Spec.choice())
     }
-    if(input$diversity == TRUE) {
+    if(input$richness == TRUE) {
       data <- data %>% 
         filter(Site == click$id) %>% 
         group_by(Species, Site, Latitude, Longitude) %>% 

@@ -65,6 +65,9 @@ ui <- shiny::bootstrapPage(tags$style(" #loadmessage {
                                                                      uiOutput("Species"),
                                                                      uiOutput("checkbox"),
                                                                      conditionalPanel("output.fileUploaded == true",
+                                                                                      a(id = "toggleAdvanced", "Show/hide advanced controls"),
+                                                                                      shinyjs::hidden(
+                                                                                        div(id = "advanced",
                                                                      splitLayout(
                                                                              shiny::checkboxInput("idw", "Interpolation (idw)", FALSE),
                                                                              shiny::checkboxInput("circles", "Circle markers", TRUE)
@@ -80,7 +83,7 @@ ui <- shiny::bootstrapPage(tags$style(" #loadmessage {
                                                                            downloadButton('downloadData', 'Download')
                                                                      )
                                                                      )
-                                                                 )
+                                                                 )))
 )
 ,
 shinyjs::hidden(
@@ -120,13 +123,15 @@ server <- function(input, output, session) {
     }
   })
   
+  shinyjs::onclick("toggleAdvanced",
+                   shinyjs::toggle(id = "advanced", anim = TRUE))    
+  
   observeEvent(input$map_shape_click,{
     shinyjs::show("cp1")
   })
   observeEvent(input$close,{
     shinyjs::hide("cp1")
   })
-  
   
   data <- reactive({
     req(input$dataset)
@@ -353,6 +358,8 @@ server <- function(input, output, session) {
       output$sliderCircle <- renderUI({
         sliderInput("circleSlider", "Circle size", min=10, max=2000, step = 10, value=1100)
       })
+      outputOptions(output, "sliderCircle", suspendWhenHidden = FALSE)
+      
       observeEvent(input$circleSlider, {
         if(input$diversity == FALSE){
           map <- leaflet::leafletProxy(map = "map", data = filteredData())  %>% 

@@ -12,7 +12,8 @@ library(data.table)
 library(shinyjs)
 library(shinyBS)
 library(DT)
-
+window_height <- htmlwidgets::JS('window.innerHeight')
+window_width <- JS('window.innerWidth')
 # Make the user interface
 ui <- shiny::bootstrapPage(tags$style(" #loadmessage {
                                       position: fixed;
@@ -42,7 +43,7 @@ ui <- shiny::bootstrapPage(tags$style(" #loadmessage {
                            shinyjs::useShinyjs(), # Use for toggling slide input
                            
                            # Add a side panel for inputs
-                           shiny::absolutePanel(top = "1%", right = "1%", width = "22%", height = "80%",
+                           shiny::absolutePanel(top = "1%", right = "1%", width = "280px", height = "500px",
                                                 div(style = "display:inline-block;width:100%;text-align: right",
                                                     bsButton("showpanel", " ", type = "toggle", value = TRUE, icon = icon("angle-double-down", lib = "font-awesome"))),
                                                 draggable = FALSE,
